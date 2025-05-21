@@ -2,6 +2,7 @@ import Mathlib.CategoryTheory.Abelian.FunctorCategory
 import Mathlib.Algebra.Category.Grp.AB
 import Mathlib.CategoryTheory.Preadditive.Yoneda.Basic
 import Mathlib.CategoryTheory.ObjectProperty.ContainsZero
+import Nori.Mathlib.CategoryTheory.Limits.Shapes.Kernels
 
 noncomputable section
 
@@ -69,30 +70,60 @@ instance : HasBinaryBiproducts (FinitelyPresented C) where
     obtain ⟨A', B', u', h'⟩ := Y.2
     set e := Classical.choice h
     set e' := Classical.choice h'
-    refine HasBinaryBiproduct.mk {bicone := ?_, isBilimit := ?_}
-    · set Z : RightMod C := cokernel (preadditiveYoneda.map (biprod.map u u'))
-      set p : Z ⟶ X.1 :=
+    let Z : RightMod C := cokernel (preadditiveYoneda.map (biprod.map u u'))
+    let p : Z ⟶ X.1 :=
         cokernel.map (preadditiveYoneda.map (biprod.map u u')) (preadditiveYoneda.map u)
         (preadditiveYoneda.map biprod.fst) (preadditiveYoneda.map biprod.fst)
         (by rw [← Functor.map_comp, ← Functor.map_comp, biprod.map_fst]) ≫ e.hom
-      set q : Z ⟶ Y.1 :=
+    let q : Z ⟶ Y.1 :=
         cokernel.map (preadditiveYoneda.map (biprod.map u u')) (preadditiveYoneda.map u')
         (preadditiveYoneda.map biprod.snd) (preadditiveYoneda.map biprod.snd)
         (by rw [← Functor.map_comp, ← Functor.map_comp, biprod.map_snd]) ≫ e'.hom
-      set a : X.1 ⟶ Z := e.inv ≫ cokernel.map (preadditiveYoneda.map u)
+    let a : X.1 ⟶ Z := e.inv ≫ cokernel.map (preadditiveYoneda.map u)
         (preadditiveYoneda.map (biprod.map u u')) (preadditiveYoneda.map biprod.inl)
         (preadditiveYoneda.map biprod.inl) sorry
-      set b : Y.1 ⟶ Z := e'.inv ≫ cokernel.map (preadditiveYoneda.map u')
+    let b : Y.1 ⟶ Z := e'.inv ≫ cokernel.map (preadditiveYoneda.map u')
         (preadditiveYoneda.map (biprod.map u u')) (preadditiveYoneda.map biprod.inr)
         (preadditiveYoneda.map biprod.inr) sorry
-      have hZ : IsFinitelyPresented C Z := sorry
-      refine BinaryBicone.mk ⟨Z, hZ⟩ p q a b ?_ ?_ ?_ ?_
+    have hZ : IsFinitelyPresented C Z := sorry
+    refine HasBinaryBiproduct.mk {bicone := ?_, isBilimit := ?_}
+    · refine BinaryBicone.mk ⟨Z, hZ⟩ p q a b ?_ ?_ ?_ ?_
       · dsimp [a, p]
-        sorry
+        erw [assoc e.inv]
+        slice_lhs 2 3 => rw [← cokernel.map_comp]
+        conv_lhs => congr; rfl; congr; congr; rw [← Functor.map_comp, biprod.inl_fst, preadditiveYoneda.map_id]; rfl
+                    rw [← Functor.map_comp, biprod.inl_fst, preadditiveYoneda.map_id]
+        rw [cokernel.map_id (preadditiveYoneda.map u) _ (id_comp _).symm]
+        simp only [preadditiveYoneda_obj, id_comp, Iso.inv_hom_id, a, p]
+        rfl
+      · dsimp [a, q]
+        erw [assoc e.inv]
+        slice_lhs 2 3 => rw [← cokernel.map_comp]
+        conv_lhs => congr; rfl; congr; congr; rfl; rw [← preadditiveYoneda.map_comp, biprod.inl_snd, preadditiveYoneda.map_zero]
+        rw [cokernel.map_zero (preadditiveYoneda.map u) (preadditiveYoneda.map u')]
+        · simp only [preadditiveYoneda_obj, zero_comp, comp_zero, a, q, p]
+        · rw [← Functor.map_comp, biprod.inl_snd, preadditiveYoneda.map_zero, zero_comp]
+      · dsimp [b, p]
+        erw [assoc e'.inv]
+        slice_lhs 2 3 => rw [← cokernel.map_comp]
+        conv_lhs => congr; rfl; congr; congr; rfl; rw [← Functor.map_comp, biprod.inr_fst, preadditiveYoneda.map_zero]
+        rw [cokernel.map_zero]
+        · simp only [preadditiveYoneda_obj, zero_comp, comp_zero, a, b, q, p]
+        · rw [← Functor.map_comp, biprod.inr_fst, preadditiveYoneda.map_zero, zero_comp]
+      · dsimp [b, q]
+        erw [assoc e'.inv]
+        slice_lhs 2 3 => rw [← cokernel.map_comp]
+        conv_lhs => congr; rfl; congr; congr; rw [← Functor.map_comp, biprod.inr_snd, preadditiveYoneda.map_id]; rfl
+                    rw [← Functor.map_comp, biprod.inr_snd, preadditiveYoneda.map_id]
+        rw [cokernel.map_id (preadditiveYoneda.map u') _ (id_comp _).symm]
+        simp only [preadditiveYoneda_obj, id_comp, Iso.inv_hom_id, a, b, q, p]
+        rfl
+    · refine {isLimit := ?_, isColimit := ?_}
+      · refine {lift s := ?_, fac := ?_, uniq := ?_}
+        · sorry
+        · sorry
+        · sorry
       · sorry
-      · sorry
-      · sorry
-    · sorry
 
 end FiniteProducts
 
