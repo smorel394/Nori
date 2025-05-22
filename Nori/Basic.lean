@@ -45,6 +45,34 @@ instance : (IsFinitelyPresented₂ C).IsClosedUnderIsomorphisms where
     use A, B, u ≫ α.hom, inferInstance,
       v ≫ (kernel.mapIso u (u ≫ α.hom) (Iso.refl _) α (by simp)).hom, inferInstance
 
+section Preadditive
+
+variable [Preadditive C]
+
+instance (F : Cᵒᵖ ⥤ AddCommGrp.{v}) [(F ⋙ forget AddCommGrp).IsRepresentable] :
+    F.Additive where
+  map_add {X Y} {f g} := by
+    set e := Functor.representableByEquiv (F ⋙ forget AddCommGrp).representableBy
+    apply (forget AddCommGrp).map_injective
+    change (F ⋙ forget AddCommGrp).map (f + g) = _
+
+
+
+def Functor.representableByEquivAdd {F : Cᵒᵖ ⥤ AddCommGrp.{v}} {Y : C} :
+    (F ⋙ forget AddCommGrp).RepresentableBy Y ≃ (preadditiveYoneda.obj Y ≅ F) where
+  toFun r := by
+    refine NatIso.ofComponents (fun X ↦ AddEquiv.toAddCommGrpIso ?_) ?_
+    · dsimp
+      refine {r.homEquiv (X := unop X) with map_add' f g := ?_}
+      simp
+      sorry
+    · sorry
+  invFun e := sorry
+  left_inv := sorry
+  right_inv := sorry
+
+end Preadditive
+
 section ZeroObject
 
 variable [HasZeroObject C]
@@ -114,7 +142,22 @@ instance : HasFiniteBiproducts C where
   out _ := {has_biproduct _ := HasBiproduct.of_hasProduct _ }
 
 instance (n : ℕ) (c : Fin n → RightMod C) [∀ i, (c i ⋙ forget AddCommGrp).IsRepresentable] :
-    (biproduct c ⋙ forget AddCommGrp).IsRepresentable := sorry
+    (biproduct c ⋙ forget AddCommGrp).IsRepresentable where
+  has_representation := by
+    let A : Fin n → C := fun i ↦ (c i ⋙ forget AddCommGrp).reprX
+    let e := fun i ↦ Functor.representableByEquiv.toFun (c i ⋙ forget AddCommGrp).representableBy
+    use biproduct A
+    have := isBilimitOfPreserves (preadditiveYoneda (C := C)) (biproduct.isBilimit A)
+    have := biproduct.uniqueUpToIso _ this
+    refine Nonempty.intro ?_
+    refine Functor.representableByEquiv.invFun ?_
+    change (preadditiveYoneda.obj _) ⋙ forget AddCommGrp ≅ _
+    refine isoWhiskerRight ?_ (forget AddCommGrp)
+    refine preadditiveYoneda.mapIso e ≪≫ ?_
+    refine eqToIso (Functor.mapBicone_pt _ _).symm ≪≫ this ≪≫ ?_
+    refine biproduct.mapIso (fun i ↦ ?_)
+    set e := (c i ⋙ forget AddCommGrp).representableBy.isoReprX
+
 
 def biproduct.KernelOfMap (n : ℕ) (A : Fin n → RightMod C) (B : Fin n → RightMod C) (u : (i : Fin n) → (A i ⟶ B i)) :
     IsLimit (KernelFork.ofι (f := biproduct.map u) (biproduct.map (fun i ↦ kernel.ι (u i)))
@@ -164,6 +207,8 @@ lemma IsFinitelyPresented_isClosedUnderFiniteBiproduct (n : ℕ) (c : Fin n → 
   have : (biproduct A ⋙ forget AddCommGrp).IsRepresentable := inferInstance
   have : (biproduct B ⋙ forget AddCommGrp).IsRepresentable := inferInstance
   use biproduct A, biproduct B, biproduct.map u, biproduct.map_epi u
+  have := biproduct.map_epi v
+  use biproduct.map v ≫ (biproduct.map_kernel C n _ _ u).hom, inferInstance
 
 instance : HasFiniteBiproducts (FinitelyPresented C) where
   out n :=
