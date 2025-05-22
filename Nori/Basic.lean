@@ -4,6 +4,7 @@ import Mathlib.CategoryTheory.ObjectProperty.ContainsZero
 import Mathlib.Algebra.Category.Grp.Zero
 import Nori.Mathlib.CategoryTheory.Limits.Shapes.Kernels
 import Nori.Mathlib.CategoryTheory.Preadditive.Yoneda.Basic
+import Nori.Mathlib.CategoryTheory.Limits.Shapes.Biproducts
 
 noncomputable section
 
@@ -107,75 +108,86 @@ end ZeroObject
 
 section FiniteProducts
 
-variable [Preadditive C] [HasBinaryProducts C]
+variable [Preadditive C] [HasFiniteProducts C]
 
-instance : HasBinaryBiproducts C where
-  has_binary_biproduct A B := by
-    have : HasBiproduct (pairFunction A B) := HasBiproduct.of_hasProduct _
-    exact HasBinaryBiproduct.mk
-      { bicone := (biproduct.bicone (pairFunction A B)).toBinaryBicone
-        isBilimit := (Bicone.toBinaryBiconeIsBilimit _).symm (biproduct.isBilimit _) }
+instance : HasFiniteBiproducts C where
+  out _ := {has_biproduct _ := HasBiproduct.of_hasProduct _ }
 
-instance : HasBinaryBiproducts (FinitelyPresented C) where
-  has_binary_biproduct X Y := by
-    obtain ⟨A, B, u, h⟩ := X.2
-    obtain ⟨A', B', u', h'⟩ := Y.2
-    set e := Classical.choice h
-    set e' := Classical.choice h'
-    let Z : RightMod C := cokernel (preadditiveYoneda.map (biprod.map u u'))
-    let p : Z ⟶ X.1 :=
-        cokernel.map (preadditiveYoneda.map (biprod.map u u')) (preadditiveYoneda.map u)
-        (preadditiveYoneda.map biprod.fst) (preadditiveYoneda.map biprod.fst)
-        (by rw [← Functor.map_comp, ← Functor.map_comp, biprod.map_fst]) ≫ e.hom
-    let q : Z ⟶ Y.1 :=
-        cokernel.map (preadditiveYoneda.map (biprod.map u u')) (preadditiveYoneda.map u')
-        (preadditiveYoneda.map biprod.snd) (preadditiveYoneda.map biprod.snd)
-        (by rw [← Functor.map_comp, ← Functor.map_comp, biprod.map_snd]) ≫ e'.hom
-    let a : X.1 ⟶ Z := e.inv ≫ cokernel.map (preadditiveYoneda.map u)
-        (preadditiveYoneda.map (biprod.map u u')) (preadditiveYoneda.map biprod.inl)
-        (preadditiveYoneda.map biprod.inl) sorry
-    let b : Y.1 ⟶ Z := e'.inv ≫ cokernel.map (preadditiveYoneda.map u')
-        (preadditiveYoneda.map (biprod.map u u')) (preadditiveYoneda.map biprod.inr)
-        (preadditiveYoneda.map biprod.inr) sorry
-    have hZ : IsFinitelyPresented C Z := sorry
-    refine HasBinaryBiproduct.mk {bicone := ?_, isBilimit := ?_}
-    · refine BinaryBicone.mk ⟨Z, hZ⟩ p q a b ?_ ?_ ?_ ?_
-      · dsimp [a, p]
-        erw [assoc e.inv]
-        slice_lhs 2 3 => rw [← cokernel.map_comp]
-        conv_lhs => congr; rfl; congr; congr; rw [← Functor.map_comp, biprod.inl_fst, preadditiveYoneda.map_id]; rfl
-                    rw [← Functor.map_comp, biprod.inl_fst, preadditiveYoneda.map_id]
-        rw [cokernel.map_id (preadditiveYoneda.map u) _ (id_comp _).symm]
-        simp only [preadditiveYoneda_obj, id_comp, Iso.inv_hom_id, a, p]
-        rfl
-      · dsimp [a, q]
-        erw [assoc e.inv]
-        slice_lhs 2 3 => rw [← cokernel.map_comp]
-        conv_lhs => congr; rfl; congr; congr; rfl; rw [← preadditiveYoneda.map_comp, biprod.inl_snd, preadditiveYoneda.map_zero]
-        rw [cokernel.map_zero (preadditiveYoneda.map u) (preadditiveYoneda.map u')]
-        · simp only [preadditiveYoneda_obj, zero_comp, comp_zero, a, q, p]
-        · rw [← Functor.map_comp, biprod.inl_snd, preadditiveYoneda.map_zero, zero_comp]
-      · dsimp [b, p]
-        erw [assoc e'.inv]
-        slice_lhs 2 3 => rw [← cokernel.map_comp]
-        conv_lhs => congr; rfl; congr; congr; rfl; rw [← Functor.map_comp, biprod.inr_fst, preadditiveYoneda.map_zero]
-        rw [cokernel.map_zero]
-        · simp only [preadditiveYoneda_obj, zero_comp, comp_zero, a, b, q, p]
-        · rw [← Functor.map_comp, biprod.inr_fst, preadditiveYoneda.map_zero, zero_comp]
-      · dsimp [b, q]
-        erw [assoc e'.inv]
-        slice_lhs 2 3 => rw [← cokernel.map_comp]
-        conv_lhs => congr; rfl; congr; congr; rw [← Functor.map_comp, biprod.inr_snd, preadditiveYoneda.map_id]; rfl
-                    rw [← Functor.map_comp, biprod.inr_snd, preadditiveYoneda.map_id]
-        rw [cokernel.map_id (preadditiveYoneda.map u') _ (id_comp _).symm]
-        simp only [preadditiveYoneda_obj, id_comp, Iso.inv_hom_id, a, b, q, p]
-        rfl
-    · refine {isLimit := ?_, isColimit := ?_}
-      · refine {lift s := ?_, fac := ?_, uniq := ?_}
-        · sorry
-        · sorry
-        · sorry
-      · sorry
+instance (n : ℕ) (c : Fin n → RightMod C) [∀ i, (c i ⋙ forget AddCommGrp).IsRepresentable] :
+    (biproduct c ⋙ forget AddCommGrp).IsRepresentable := sorry
+
+def biproduct.KernelOfMap (n : ℕ) (A : Fin n → RightMod C) (B : Fin n → RightMod C) (u : (i : Fin n) → (A i ⟶ B i)) :
+    IsLimit (KernelFork.ofι (f := biproduct.map u) (biproduct.map (fun i ↦ kernel.ι (u i)))
+    (by rw [← biproduct.map_comp]; simp only [Functor.comp_obj, Functor.flip_obj_obj, kernel.condition]; exact biproduct.map_zero)) where
+  lift s := by
+    refine biproduct.lift (fun i ↦ kernel.lift (u i) (s.π.app WalkingParallelPair.zero ≫ biproduct.π A i) ?_)
+    have := biproduct.hom_ext_iff.mp (KernelFork.condition s) i
+    dsimp at this
+    rw [assoc, biproduct.map_π, ← assoc, zero_comp] at this
+    exact this
+  fac s j := by
+    match j with
+    | WalkingParallelPair.zero =>
+      dsimp
+      simp only [biproduct.lift_map, kernel.lift_ι]
+      refine biproduct.hom_ext _ _ (fun j ↦ ?_)
+      simp only [biproduct.lift_π]
+    | WalkingParallelPair.one =>
+      dsimp
+      simp only [biproduct.lift_map_assoc, kernel.lift_ι, biproduct.lift_map, assoc,
+        Fork.app_one_eq_ι_comp_left, Functor.const_obj_obj, parallelPair_obj_zero,
+        KernelFork.condition]
+      refine biproduct.hom_ext _ _ (fun j ↦ ?_)
+      simp only [biproduct.lift_π, zero_comp]
+      have := biproduct.hom_ext_iff.mp (KernelFork.condition s) j
+      dsimp at this
+      rw [assoc, biproduct.map_π, ← assoc, zero_comp] at this
+      exact this
+  uniq s m eq := by
+    refine biproduct.hom_ext _ _ (fun j ↦ ?_)
+    rw [← cancel_mono (kernel.ι (u j))]
+    dsimp
+    simp only [assoc, biproduct.lift_π, kernel.lift_ι]
+    have := (biproduct.hom_ext_iff.mp (eq WalkingParallelPair.zero)) j
+    dsimp at this
+    simp only [assoc, biproduct.map_π] at this
+    exact this
+
+def biproduct.map_kernel (n : ℕ) (A : Fin n → RightMod C) (B : Fin n → RightMod C) (u : (i : Fin n) → (A i ⟶ B i)) :
+    biproduct (fun i ↦ kernel (u i)) ≅ kernel (biproduct.map u) := by
+  set e := IsLimit.conePointUniqueUpToIso (biproduct.KernelOfMap C n A B u) (kernelIsKernel (biproduct.map u))
+  exact e
+
+lemma IsFinitelyPresented_isClosedUnderFiniteBiproduct (n : ℕ) (c : Fin n → RightMod C)
+    (hc : ∀ (i : Fin n), IsFinitelyPresented₂ C (c i)) : IsFinitelyPresented₂ C (biproduct c) := by
+  choose A B u hu v hv Arep Brep using hc
+  have : (biproduct A ⋙ forget AddCommGrp).IsRepresentable := inferInstance
+  have : (biproduct B ⋙ forget AddCommGrp).IsRepresentable := inferInstance
+  use biproduct A, biproduct B, biproduct.map u, biproduct.map_epi u
+
+instance : HasFiniteBiproducts (FinitelyPresented C) where
+  out n :=
+    {has_biproduct c := by
+      refine HasBiproduct.mk {bicone := ?_, isBilimit := {isLimit := ?_, isColimit := ?_}}
+      · exact {pt := ⟨biproduct (fun i ↦ (c i).1),
+                 IsFinitelyPresented_isClosedUnderFiniteBiproduct C n (fun i ↦ (c i).1) (fun i ↦ (c i).2)⟩,
+               π := biproduct.π (fun i ↦ (c i).1),
+               ι := biproduct.ι (fun i ↦ (c i).1),
+               ι_π j j' := by erw [biproduct.ι_π (fun i ↦ (c i).1) j j']
+                              by_cases eq : j = j'
+                              · simp only [eq, ↓reduceDIte]; rfl
+                              · simp only [eq, ↓reduceDIte]}
+      · refine {lift s := ?_, fac s := ?_, uniq s := ?_}
+        · exact (biproduct.isLimit (fun i ↦ (c i).1)).lift ((IsFinitelyPresented₂ C).ι.mapCone s)
+        · exact (biproduct.isLimit (fun i ↦ (c i).1)).fac ((IsFinitelyPresented₂ C).ι.mapCone s)
+        · exact (biproduct.isLimit (fun i ↦ (c i).1)).uniq ((IsFinitelyPresented₂ C).ι.mapCone s)
+      · refine {desc s := ?_, fac s := ?_, uniq s := ?_}
+        · exact (biproduct.isColimit (fun i ↦ (c i).1)).desc ((IsFinitelyPresented₂ C).ι.mapCocone s)
+        · exact (biproduct.isColimit (fun i ↦ (c i).1)).fac ((IsFinitelyPresented₂ C).ι.mapCocone s)
+        · exact (biproduct.isColimit (fun i ↦ (c i).1)).uniq ((IsFinitelyPresented₂ C).ι.mapCocone s)
+    }
+
+instance : HasBinaryBiproducts (FinitelyPresented C) := hasBinaryBiproducts_of_finite_biproducts _
 
 end FiniteProducts
 
