@@ -3,121 +3,200 @@ import Mathlib.CategoryTheory.ObjectProperty.ContainsZero
 import Mathlib.CategoryTheory.ObjectProperty.EpiMono
 import Mathlib.CategoryTheory.ObjectProperty.Extensions
 import Mathlib.Algebra.Homology.ShortComplex.ShortExact
+import Mathlib.CategoryTheory.Preadditive.LeftExact
+import Mathlib.CategoryTheory.Limits.Preserves.Shapes.AbelianImages
 
 noncomputable section
 
-universe v u
+universe v u u' v'
 
 namespace CategoryTheory
 
 open Limits ZeroObject Category
 
-variable {C : Type u} [Category.{v} C] [Abelian C] (P : ObjectProperty C)
+variable {J : Type u'} [Category.{v'} J]  {C : Type u} [Category.{v} C] (P : ObjectProperty C)
 
 namespace ObjectProperty
 
-/-
-TODO: a version where we just require one kernel (resp. cokernel, resp. product)
-satisfying `P`, so we get non-thick abelian subcategories.
+section ContainsLimit
+
+class ContainsLimit (F : J ⥤ P.FullSubcategory) where
+    contains_limit : ∃ (c : Cone F), Nonempty (IsLimit (F := F ⋙ P.ι) (P.ι.mapCone c))
+
+lemma exists_limit_of_containsLimit (F : J ⥤ P.FullSubcategory) [P.ContainsLimit F] :
+    ∃ (c : Cone F), Nonempty (IsLimit (P.ι.mapCone c)) := ContainsLimit.contains_limit
+
+instance HasLimitOfContainsLimit (F : J ⥤ P.FullSubcategory) [P.ContainsLimit F] :
+    HasLimit F where
+  exists_limit :=
+    let h := exists_limit_of_containsLimit P F
+    Nonempty.intro {cone := Classical.choose h,
+                    isLimit := isLimitOfReflects P.ι (Classical.choice (Classical.choose_spec h))}
+
+instance PreservesLimitOfContainsLimit (F : J ⥤ P.FullSubcategory) [P.ContainsLimit F] :
+    PreservesLimit F P.ι where
+  preserves hc :=
+    let ⟨_, hd⟩ := exists_limit_of_containsLimit P F
+    Nonempty.intro (IsLimit.ofIsoLimit (Classical.choice hd) ((Cones.functoriality _ P.ι).mapIso
+      ((isLimitOfReflects P.ι (Classical.choice hd)).uniqueUpToIso hc)))
+
+class ContainsColimit (F : J ⥤ P.FullSubcategory) where
+    contains_colimit : ∃ (c : Cocone F), Nonempty (IsColimit (F := F ⋙ P.ι) (P.ι.mapCocone c))
+
+lemma exists_colimit_of_containsColimit (F : J ⥤ P.FullSubcategory) [P.ContainsColimit F] :
+    ∃ (c : Cocone F), Nonempty (IsColimit (P.ι.mapCocone c)) := ContainsColimit.contains_colimit
+
+instance HasColimitOfContainsColimit (F : J ⥤ P.FullSubcategory) [P.ContainsColimit F] :
+    HasColimit F where
+  exists_colimit :=
+    let h := exists_colimit_of_containsColimit P F
+    Nonempty.intro {cocone := Classical.choose h,
+                    isColimit := isColimitOfReflects P.ι (Classical.choice
+                                 (Classical.choose_spec h))}
+
+instance PreservesColimitOfContainsColimit (F : J ⥤ P.FullSubcategory) [P.ContainsColimit F] :
+    PreservesColimit F P.ι where
+  preserves hc :=
+    let ⟨_, hd⟩ := exists_colimit_of_containsColimit P F
+    Nonempty.intro (IsColimit.ofIsoColimit (Classical.choice hd)
+      ((Cocones.functoriality _ P.ι).mapIso ((isColimitOfReflects P.ι
+      (Classical.choice hd)).uniqueUpToIso hc)))
+
+end ContainsLimit
+
+section KernelsCokernels
+
+variable [Preadditive C]
+/- This should be `HasZeroMorphisms`, but I'm afraid of a diamond because `Preadditive C`
+gives `Preadditive P.FullSubcategory` which gives `HasZeroMorphisms P.FullSubcatgeory`...
+
 -/
 
-class IsClosedUnderKernels where
-  prop_of_kernel {X Y Z : C} (f : X ⟶ Y) (g : Z ⟶ X) (zero : g ≫ f = 0) (hX : P X)
-    (hY : P Y) (lim : IsLimit (KernelFork.ofι g zero)) : P Z
+class ContainsKernels where
+    contains_kernel : ∀ {X Y : P.FullSubcategory} (f : X ⟶ Y), P.ContainsLimit (parallelPair f 0)
 
-lemma prop_of_kernel [P.IsClosedUnderKernels] {X Y Z : C} (f : X ⟶ Y) (g : Z ⟶ X)
-    (zero : g ≫ f = 0) (hX : P X) (hY : P Y) (lim : IsLimit (KernelFork.ofι g zero)) : P Z :=
-  IsClosedUnderKernels.prop_of_kernel f g zero hX hY lim
+instance [P.ContainsKernels] : HasKernels P.FullSubcategory where
+  has_limit f := by
+    have : P.ContainsLimit (parallelPair f 0) := ContainsKernels.contains_kernel f
+    infer_instance
 
-/-
-Should probably generalize this to limits of more general shapes, and use
-in the proof that fully faithful functors reflects limits.
--/
-lemma hasKernels_of_isClosedUnderKernels [P.IsClosedUnderKernels] :
-    HasKernels P.FullSubcategory where
-  has_limit {X Y} f := by
-    let Z : P.FullSubcategory := ⟨kernel (P.ι.map f), P.prop_of_kernel (P.ι.map f)
-      (kernel.ι (P.ι.map f)) (kernel.condition _) X.2 Y.2 (kernelIsKernel _)⟩
-    let c : Fork f 0 := Fork.ofι (P := Z) (kernel.ι (P.ι.map f))
-      (by rw [comp_zero]; exact kernel.condition _)
-    refine HasLimit.mk
-      {cone := c,
-       isLimit := IsLimit.mk (fun  s ↦ kernel.lift (P.ι.map f) (P.ι.map (Fork.ι s))
-         (KernelFork.condition s)) (fun s j ↦ ?_) (fun s m h ↦ ?_)}
-    · match j with
-      | WalkingParallelPair.zero => exact kernel.lift_ι (P.ι.map f) _ _
-      | WalkingParallelPair.one => dsimp; simp [KernelFork.app_one]
-    · rw [← cancel_mono (kernel.ι (P.ι.map f))]
-      erw [kernel.lift_ι]
-      exact h WalkingParallelPair.zero
+instance [P.ContainsKernels] {X Y : P.FullSubcategory} (f : X ⟶ Y) :
+    PreservesLimit (Limits.parallelPair f 0) P.ι := by
+  have : P.ContainsLimit (parallelPair f 0) := ContainsKernels.contains_kernel f
+  infer_instance
 
-lemma isClosedUnderIsomorphisms_of_isClosedUnderKernels [P.IsClosedUnderKernels]
-    [P.ContainsZero] : P.IsClosedUnderIsomorphisms where
-  of_iso {X Y} f hX := by
-    obtain ⟨Z, h₁, h₂⟩ := P.exists_prop_of_containsZero
-    have : IsLimit (KernelFork.ofι (X := X) (Y := Z) (f := 0) f.inv (by simp)) :=
-      Fork.IsLimit.mk _ (fun s ↦ s.ι ≫ f.hom) (fun _ ↦ by simp)
-      (fun _ _ h ↦ by dsimp; rw [← h]; simp)
-    exact P.prop_of_kernel (0 : X ⟶ Z) f.inv (by simp) hX h₂ this
+class ContainsKernelsOfEpi where
+    contains_kernel : ∀ {X Y : P.FullSubcategory} (f : X ⟶ Y) [Epi f],
+    P.ContainsLimit (parallelPair f 0)
 
-class IsClosedUnderCokernels where
-  prop_of_cokernel {X Y Z : C} (f : X ⟶ Y) (g : Y ⟶ Z) (zero : f ≫ g = 0) (hX : P X)
-    (hY : P Y) (colim : IsColimit (CokernelCofork.ofπ g zero)) : P Z
+class ContainsCokernels where
+    contains_cokernel : ∀ {X Y : P.FullSubcategory} (f : X ⟶ Y),
+    P.ContainsColimit (parallelPair f 0)
 
-lemma prop_of_cokernel [P.IsClosedUnderCokernels] {X Y Z : C} (f : X ⟶ Y) (g : Y ⟶ Z)
-    (zero : f ≫ g = 0) (hX : P X) (hY : P Y)
-    (colim : IsColimit (CokernelCofork.ofπ g zero)) : P Z :=
-  IsClosedUnderCokernels.prop_of_cokernel f g zero hX hY colim
+instance [P.ContainsCokernels] : HasCokernels P.FullSubcategory where
+  has_colimit f := by
+    have : P.ContainsColimit (parallelPair f 0) := ContainsCokernels.contains_cokernel f
+    infer_instance
 
-lemma hasCokernels_of_isClosedUnderCokernels [P.IsClosedUnderCokernels] :
-    HasCokernels P.FullSubcategory where
-  has_colimit {X Y} f := by sorry
+instance [P.ContainsCokernels] {X Y : P.FullSubcategory} (f : X ⟶ Y) :
+    PreservesColimit (Limits.parallelPair f 0) P.ι := by
+  have : P.ContainsColimit (parallelPair f 0) := ContainsCokernels.contains_cokernel f
+  infer_instance
 
-lemma isClosedUnderIsomorphisms_of_isClosedUnderCokernels [P.IsClosedUnderCokernels]
-    [P.ContainsZero] : P.IsClosedUnderIsomorphisms where
-  of_iso {X Y} f hX := by
-    obtain ⟨Z, h₁, h₂⟩ := P.exists_prop_of_containsZero
-    have : IsColimit (CokernelCofork.ofπ (X := Z) (Y := X) (f := 0) f.hom (by simp)) := by
-      refine Cofork.IsColimit.mk _ (fun s ↦ f.inv ≫ s.π) (fun _ ↦ by simp)
-        (fun _ _ h ↦ by dsimp; rw [← h]; simp)
-    exact P.prop_of_cokernel (0 : Z ⟶ X) f.hom (by simp) h₂ hX this
+class ContainsCokernelsOfMono where
+    contains_cokernel : ∀ {X Y : P.FullSubcategory} (f : X ⟶ Y) [Mono f],
+    P.ContainsColimit (parallelPair f 0)
 
-class IsClosedUnderFiniteProducts where
-  prop_of_product (n : ℕ) (c : Fin n → C) (hc : ∀ i, P (c i)) : P (∏ᶜ c)
--- This should say that there exists a product satisfying `P`.
+class ContainsFiniteProducts where
+    contains_product : ∀ (n : ℕ) (c :Fin n → P.FullSubcategory),
+    P.ContainsLimit (Discrete.functor c)
 
-lemma hasFiniteProducts_of_isClosedUnderFiniteProducts [P.IsClosedUnderFiniteProducts] :
-    HasFiniteProducts P.FullSubcategory := sorry
+instance [P.ContainsFiniteProducts] : HasFiniteProducts P.FullSubcategory where
+  out n := by refine HasLimitsOfShape.mk (fun c ↦ ?_)
+              have := ContainsFiniteProducts.contains_product n (c.obj ∘ Discrete.mk)
+              exact hasLimit_of_iso Discrete.natIsoFunctor.symm
 
-lemma prop_of_product' [P.IsClosedUnderFiniteProducts] (n : ℕ) (c : Fin n → C)
-    (hc : ∀ i, P (c i)) : P (∏ᶜ c) := IsClosedUnderFiniteProducts.prop_of_product n c hc
+instance [P.ContainsFiniteProducts] : PreservesFiniteProducts P.ι where
+  preserves _ := {preservesLimit := inferInstance}
 
-lemma prop_of_product [P.IsClosedUnderFiniteProducts] [P.IsClosedUnderIsomorphisms]
-    {J : Type*} [Finite J] (c : J → C) (hc : ∀ j, P (c j)) : P (∏ᶜ c) := by
-  rcases Finite.exists_equiv_fin J with ⟨n, ⟨e⟩⟩
-  set e := HasLimit.isoOfEquivalence (F := Discrete.functor c)
-    (G := Discrete.functor (c.comp e.invFun)) (Discrete.equivalence e)
-    (by refine NatIso.ofComponents (fun _ ↦ eqToIso (by simp)) ?_
-        intro X Y f
-        dsimp
-        have := Discrete.eq_of_hom f
-        have eq : f = Discrete.eqToHom this := Subsingleton.elim _ _
-        rw [eq]
-        simp only [eqToHom_map, Discrete.functor_obj_eq_as, Function.comp_apply, eqToHom_trans])
-  exact P.prop_of_iso e.symm (P.prop_of_product' n _ (fun _ ↦ hc _))
+instance [P.ContainsZero] : HasZeroObject P.FullSubcategory where
+  zero := by
+    obtain ⟨X, h₁, h₂⟩ := P.exists_prop_of_containsZero
+    use ⟨X, h₂⟩
+    refine {unique_to Y := ?_, unique_from Y := ?_}
+    · exact (unique_iff_subsingleton_and_nonempty _).mpr ⟨Subsingleton.intro
+        (fun _ _ ↦ h₁.eq_of_src _ _), Nonempty.intro 0⟩
+    · exact (unique_iff_subsingleton_and_nonempty _).mpr ⟨Subsingleton.intro
+        (fun _ _ ↦ h₁.eq_of_tgt _ _), Nonempty.intro 0⟩
 
-class IsAbelian : Prop extends P.ContainsZero, P.IsClosedUnderKernels, P.IsClosedUnderCokernels,
-  P.IsClosedUnderFiniteProducts
+-- Left exactness of the forgetful functor.
+instance [HasZeroObject C] [P.ContainsKernels] [P.ContainsFiniteProducts] :
+    PreservesFiniteLimits P.ι := by
+  have := HasFiniteBiproducts.of_hasFiniteProducts (C := P.FullSubcategory)
+  have := hasBinaryBiproducts_of_finite_biproducts P.FullSubcategory
+  have := Preadditive.hasEqualizers_of_hasKernels (C := P.FullSubcategory)
+  exact P.ι.preservesFiniteLimits_of_preservesKernels
 
-variable [P.IsAbelian]
+-- Right exactness of the forgetful functor.
+instance [HasZeroObject C] [P.ContainsCokernels] [P.ContainsFiniteProducts] :
+    PreservesFiniteColimits P.ι := by
+  have := HasFiniteBiproducts.of_hasFiniteProducts (C := P.FullSubcategory)
+  have := hasBinaryBiproducts_of_finite_biproducts P.FullSubcategory
+  have := Preadditive.hasCoequalizers_of_hasCokernels (C := P.FullSubcategory)
+  exact P.ι.preservesFiniteColimits_of_preservesCokernels
 
-instance : P.IsClosedUnderIsomorphisms := P.isClosedUnderIsomorphisms_of_isClosedUnderKernels
+end KernelsCokernels
 
-instance : Abelian P.FullSubcategory := by
-  have : HasKernels P.FullSubcategory := P.hasKernels_of_isClosedUnderKernels
-  have : HasCokernels P.FullSubcategory := P.hasCokernels_of_isClosedUnderCokernels
-  have : HasFiniteProducts P.FullSubcategory := P.hasFiniteProducts_of_isClosedUnderFiniteProducts
-  have : ∀ {X Y : P.FullSubcategory} (f : X ⟶ Y), IsIso (Abelian.coimageImageComparison f) := sorry
+section Abelian
+
+variable [Abelian C]
+
+class IsAbelian : Prop extends P.ContainsZero, P.ContainsKernels, P.ContainsCokernels,
+  P.ContainsFiniteProducts
+
+instance [P.IsAbelian] : Abelian P.FullSubcategory := by
+  have : ∀ {X Y : P.FullSubcategory} (f : X ⟶ Y), IsIso (Abelian.coimageImageComparison f) := by
+    intro X Y f
+    have : IsIso (P.ι.map (Abelian.coimageImageComparison f)) := by
+      rw [Arrow.isIso_iff_isIso_of_isIso (Abelian.PreservesCoimageImageComparison.iso P.ι f).hom]
+      infer_instance
+    exact isIso_of_fully_faithful P.ι _
   exact Abelian.ofCoimageImageComparisonIsIso
+
+lemma IsAbelian_of_containsKernelsEpiAndCokernels [P.ContainsZero] [P.ContainsKernelsOfEpi]
+    [P.ContainsCokernels] : P.ContainsKernels where
+  contains_kernel {X Y} f := by
+    refine {contains_limit := ?_}
+    set g := cokernel.π f
+    have := ContainsKernelsOfEpi.contains_kernel g
+    set Z := kernel g
+    set h : X ⟶ Z := kernel.lift g f (cokernel.condition f)
+    have : Epi h := sorry
+    have := ContainsKernelsOfEpi.contains_kernel h
+    set d : Cone (parallelPair f 0) := by
+      refine KernelFork.ofι (kernel.ι h) ?_
+      dsimp
+      rw [← kernel.lift_ι g f (cokernel.condition f), ← assoc, kernel.condition, zero_comp]
+    refine ⟨d, Nonempty.intro ?_⟩
+    have : Mono (P.ι.map (kernel.ι g)) := sorry
+    have lim := isLimitOfPreserves P.ι (kernelIsKernel h)
+    set c' := P.ι.mapCone (KernelFork.ofι (f := h) (kernel.ι h) (kernel.condition _))
+    set c'' : KernelFork (P.ι.map h) := KernelFork.ofι (P.ι.map (kernel.ι h))
+      (by rw [← P.ι.map_comp, kernel.condition, P.ι.map_zero])
+    have hc'' : IsLimit c'' := sorry
+    have hh : P.ι.map f = P.ι.map h ≫ P.ι.map (kernel.ι g) := by
+      rw [← P.ι.map_comp, kernel.lift_ι]
+    set d' : KernelFork (P.ι.map f) := KernelFork.ofι c''.ι
+      (by dsimp [c'']; rw [← kernel.lift_ι g f (cokernel.condition f)]
+          erw [← assoc, kernel.condition h]; rw [zero_comp])
+    have hd' : IsLimit d' := isKernelCompMono hc'' (P.ι.map (kernel.ι g)) hh
+    set e : P.ι.mapCone d ≅ d' := sorry
+
+lemma IsAbelian_of_containsKernelsAndCokernelsMono [P.ContainsZero] [P.ContainsKernels]
+    [P.ContainsCokernelsOfMono] : P.IsAbelian := sorry
+
+
+end Abelian
+
 
 end ObjectProperty
