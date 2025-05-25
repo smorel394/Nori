@@ -216,7 +216,55 @@ lemma ContainsKernels_of_containsKernelsEpiAndCokernels [P.ContainsZero] [P.Cont
       exact hm WalkingParallelPair.zero
 
 lemma ContainsCokernels_of_containsKernelsAndCokernelsMono [P.ContainsZero] [P.ContainsKernels]
-    [P.ContainsCokernelsOfMono] : P.IsAbelian := sorry
+    [P.ContainsCokernelsOfMono] : P.ContainsCokernels where
+  contains_cokernel {X Y} f := by
+    refine {contains_colimit := ?_}
+    have := ContainsCokernelsOfMono.contains_cokernel (kernel.ι f)
+    have hg : Mono (Abelian.factorThruCoimage f) := by
+      refine P.ι.mono_of_mono_map ?_
+      rw [← Abelian.PreservesCoimage.factorThruCoimage_iso_hom P.ι f]
+      infer_instance
+    have hι : Epi (P.ι.map (Abelian.coimage.π f)) := by
+      rw [← π_comp_cokernelComparison (kernel.ι f) P.ι]
+      infer_instance
+    have := ContainsCokernelsOfMono.contains_cokernel (Abelian.factorThruCoimage f)
+    have h₁ : f ≫ cokernel.π (Abelian.factorThruCoimage f) = 0 := by
+      simp_rw [← Abelian.coimage.fac f]; rw [assoc, cokernel.condition, comp_zero]
+    refine ⟨CokernelCofork.ofπ (cokernel.π (Abelian.factorThruCoimage f)) h₁, Nonempty.intro
+      {desc := fun s ↦ ?_, fac := fun s j ↦ ?_, uniq := fun s m hm ↦ ?_}⟩
+    · have eq : P.ι.map (Abelian.factorThruCoimage f) ≫ s.ι.app WalkingParallelPair.one = 0 := by
+        have h := s.w WalkingParallelPairHom.left
+        have h' := s.w WalkingParallelPairHom.right
+        dsimp at h h'
+        rw [← h', zero_comp] at h
+        rw [← cancel_epi (P.ι.map (Abelian.coimage.π f)), comp_zero, ← assoc, ← P.ι.map_comp,
+          Abelian.coimage.fac f]
+        exact h
+      exact (PreservesCokernel.iso P.ι (Abelian.factorThruCoimage f)).hom ≫ cokernel.desc
+        (P.ι.map (Abelian.factorThruCoimage f)) (s.ι.app WalkingParallelPair.one) eq
+    · match j with
+      | WalkingParallelPair.zero =>
+        dsimp
+        change (_ ≫ P.ι.map (cokernel.π (Abelian.factorThruCoimage f))) ≫ _ = _
+        rw [assoc, ← assoc (P.ι.map (cokernel.π (Abelian.factorThruCoimage f))),
+          PreservesCokernel.π_iso_hom]
+        simp only [ι_obj, ι_map, cokernel.π_desc]
+        have h := s.w WalkingParallelPairHom.left
+        have h' := s.w WalkingParallelPairHom.right
+        dsimp at h h'
+        rw [← h', zero_comp] at h
+        rw [h, ← h', zero_comp]
+      | WalkingParallelPair.one =>
+        dsimp
+        change P.ι.map (cokernel.π (Abelian.factorThruCoimage f)) ≫ _ = _
+        rw [← assoc, PreservesCokernel.π_iso_hom]
+        simp
+    · dsimp
+      rw [← cancel_epi (PreservesCokernel.iso P.ι (Abelian.factorThruCoimage f)).inv, ← assoc,
+        Iso.inv_hom_id, id_comp, ← cancel_epi (cokernel.π (P.ι.map (Abelian.factorThruCoimage f))),
+        PreservesCokernel.iso_inv, ← assoc, π_comp_cokernelComparison]
+      simp only [ι_obj, ι_map, cokernel.π_desc]
+      exact hm WalkingParallelPair.one
 
 lemma IsAbelian_ofKernelsOfEpi [P.ContainsZero] [P.ContainsKernelsOfEpi]
     [P.ContainsCokernels] [P.ContainsFiniteProducts] : P.IsAbelian where
