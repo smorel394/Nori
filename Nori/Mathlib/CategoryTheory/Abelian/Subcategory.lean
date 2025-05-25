@@ -164,67 +164,67 @@ instance [P.IsAbelian] : Abelian P.FullSubcategory := by
     exact isIso_of_fully_faithful P.ι _
   exact Abelian.ofCoimageImageComparisonIsIso
 
-lemma IsAbelian_of_containsKernelsEpiAndCokernels [P.ContainsZero] [P.ContainsKernelsOfEpi]
+lemma ContainsKernels_of_containsKernelsEpiAndCokernels [P.ContainsZero] [P.ContainsKernelsOfEpi]
     [P.ContainsCokernels] : P.ContainsKernels where
   contains_kernel {X Y} f := by
     refine {contains_limit := ?_}
-    set p := cokernel.π f
-    have := ContainsKernelsOfEpi.contains_kernel p
-    set Z := kernel p
-    set g : X ⟶ Z := Abelian.factorThruImage f
-    have h₀ : f = g ≫ kernel.ι p := (kernel.lift_ι p f _).symm
-    have h₀' : P.ι.map f = P.ι.map g ≫ P.ι.map (kernel.ι p) := (kernel.lift_ι p f _).symm
-    have hg : Epi g := by
+    have := ContainsKernelsOfEpi.contains_kernel (cokernel.π f)
+    have hg : Epi (Abelian.factorThruImage f) := by
       refine P.ι.epi_of_epi_map ?_
       rw [← Abelian.PreservesImage.factorThruImage_iso_inv P.ι f]
       infer_instance
-    have hι : Mono (P.ι.map (kernel.ι p)) := by
-      rw [← kernelComparison_comp_ι p P.ι]
+    have hι : Mono (P.ι.map (Abelian.image.ι f)) := by
+      rw [← kernelComparison_comp_ι (cokernel.π f) P.ι]
       infer_instance
-    have := ContainsKernelsOfEpi.contains_kernel g
-    set A := kernel g
-    set h : A ⟶ X := kernel.ι g
-    have h₁ : h ≫ f = 0 := by rw [h₀, ← assoc, kernel.condition, zero_comp]
-    set c : Cone (parallelPair f 0) := KernelFork.ofι h h₁
-    refine ⟨c, Nonempty.intro ?_⟩
-    refine {lift := fun s ↦ ?_, fac := fun s j ↦ ?_, uniq := fun s m hm ↦ ?_}
-    · set u := s.π.app WalkingParallelPair.zero
-      dsimp [c] at u ⊢
-      have eq : s.π.app WalkingParallelPair.zero ≫ P.ι.map g = 0 := by
+    have := ContainsKernelsOfEpi.contains_kernel (Abelian.factorThruImage f)
+    have h₁ : kernel.ι (Abelian.factorThruImage f) ≫ f = 0 := by
+      simp_rw [← Abelian.image.fac f]; rw [← assoc, kernel.condition, zero_comp]
+    refine ⟨KernelFork.ofι (kernel.ι (Abelian.factorThruImage f)) h₁, Nonempty.intro
+      {lift := fun s ↦ ?_, fac := fun s j ↦ ?_, uniq := fun s m hm ↦ ?_}⟩
+    · have eq : s.π.app WalkingParallelPair.zero ≫ P.ι.map (Abelian.factorThruImage f) = 0 := by
         have h := s.w WalkingParallelPairHom.left
         have h' := s.w WalkingParallelPairHom.right
         dsimp at h h'
         rw [← h', comp_zero] at h
-        rw [← cancel_mono (P.ι.map (kernel.ι p)), zero_comp]
-        rw [assoc, ← h₀']; exact h
-      refine kernel.lift (P.ι.map g) u eq ≫ (PreservesKernel.iso P.ι g).inv
+        rw [← cancel_mono (P.ι.map (Abelian.image.ι f)), zero_comp, assoc, ← P.ι.map_comp,
+          Abelian.image.fac f]
+        exact h
+      exact kernel.lift (P.ι.map (Abelian.factorThruImage f)) (s.π.app WalkingParallelPair.zero)
+        eq ≫ (PreservesKernel.iso P.ι (Abelian.factorThruImage f)).inv
     · match j with
       | WalkingParallelPair.zero =>
-        dsimp [c, h]
-        change _ ≫ P.ι.map (kernel.ι g) = _
+        dsimp
+        change _ ≫ P.ι.map (kernel.ι (Abelian.factorThruImage f)) = _
         rw [assoc, PreservesKernel.iso_inv_ι]
         simp
       | WalkingParallelPair.one =>
-        dsimp [c, h]
-        change _ ≫ P.ι.map (kernel.ι g) ≫ f = _
-        rw [assoc, ← assoc _ (P.ι.map (kernel.ι g)) f, PreservesKernel.iso_inv_ι]
-        simp only [ι_obj, ι_map, kernel.lift_ι_assoc, Z, A, c, h]
+        dsimp
+        change _ ≫ P.ι.map (kernel.ι (Abelian.factorThruImage f)) ≫ f = _
+        rw [assoc, ← assoc _ (P.ι.map (kernel.ι (Abelian.factorThruImage f))) f,
+          PreservesKernel.iso_inv_ι]
+        simp only [ι_obj, ι_map, kernel.lift_ι_assoc]
         have h := s.w WalkingParallelPairHom.left
         have h' := s.w WalkingParallelPairHom.right
         dsimp at h h'
         rw [← h', comp_zero] at h
         rw [h, ← h', comp_zero]
-    · rw [← cancel_mono (PreservesKernel.iso P.ι g).hom]
-      dsimp
-      rw [assoc, Iso.inv_hom_id, comp_id]
-      rw [← cancel_mono (kernel.ι (P.ι.map g))]
-      rw [PreservesKernel.iso_hom, assoc, kernelComparison_comp_ι]
-      simp only [ι_obj, ι_map, kernel.lift_ι, Z, A, c, h, g]
+    · dsimp
+      rw [← cancel_mono (PreservesKernel.iso P.ι (Abelian.factorThruImage f)).hom, assoc,
+        Iso.inv_hom_id, comp_id, ← cancel_mono (kernel.ι (P.ι.map (Abelian.factorThruImage f))),
+        PreservesKernel.iso_hom, assoc, kernelComparison_comp_ι]
+      simp only [ι_obj, ι_map, kernel.lift_ι]
       exact hm WalkingParallelPair.zero
 
-lemma IsAbelian_of_containsKernelsAndCokernelsMono [P.ContainsZero] [P.ContainsKernels]
+lemma ContainsCokernels_of_containsKernelsAndCokernelsMono [P.ContainsZero] [P.ContainsKernels]
     [P.ContainsCokernelsOfMono] : P.IsAbelian := sorry
 
+lemma IsAbelian_ofKernelsOfEpi [P.ContainsZero] [P.ContainsKernelsOfEpi]
+    [P.ContainsCokernels] [P.ContainsFiniteProducts] : P.IsAbelian where
+  contains_kernel := P.ContainsKernels_of_containsKernelsEpiAndCokernels.contains_kernel
+
+lemma IsAbelian_ofCokernelsOfMono [P.ContainsZero] [P.ContainsKernels]
+    [P.ContainsCokernelsOfMono] [P.ContainsFiniteProducts] : P.IsAbelian where
+  contains_cokernel := P.ContainsCokernels_of_containsKernelsAndCokernelsMono.contains_cokernel
 
 end Abelian
 
