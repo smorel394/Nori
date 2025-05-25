@@ -5,6 +5,7 @@ import Mathlib.CategoryTheory.ObjectProperty.Extensions
 import Mathlib.Algebra.Homology.ShortComplex.ShortExact
 import Mathlib.CategoryTheory.Preadditive.LeftExact
 import Mathlib.CategoryTheory.Limits.Preserves.Shapes.AbelianImages
+import Nori.Mathlib.CategoryTheory.Limits.Shapes.Equalizers
 
 noncomputable section
 
@@ -167,30 +168,59 @@ lemma IsAbelian_of_containsKernelsEpiAndCokernels [P.ContainsZero] [P.ContainsKe
     [P.ContainsCokernels] : P.ContainsKernels where
   contains_kernel {X Y} f := by
     refine {contains_limit := ?_}
-    set g := cokernel.π f
+    set p := cokernel.π f
+    have := ContainsKernelsOfEpi.contains_kernel p
+    set Z := kernel p
+    set g : X ⟶ Z := Abelian.factorThruImage f
+    have h₀ : f = g ≫ kernel.ι p := (kernel.lift_ι p f _).symm
+    have h₀' : P.ι.map f = P.ι.map g ≫ P.ι.map (kernel.ι p) := (kernel.lift_ι p f _).symm
+    have hg : Epi g := by
+      refine P.ι.epi_of_epi_map ?_
+      rw [← Abelian.PreservesImage.factorThruImage_iso_inv P.ι f]
+      infer_instance
+    have hι : Mono (P.ι.map (kernel.ι p)) := by
+      rw [← kernelComparison_comp_ι p P.ι]
+      infer_instance
     have := ContainsKernelsOfEpi.contains_kernel g
-    set Z := kernel g
-    set h : X ⟶ Z := kernel.lift g f (cokernel.condition f)
-    have : Epi h := sorry
-    have := ContainsKernelsOfEpi.contains_kernel h
-    set d : Cone (parallelPair f 0) := by
-      refine KernelFork.ofι (kernel.ι h) ?_
+    set A := kernel g
+    set h : A ⟶ X := kernel.ι g
+    have h₁ : h ≫ f = 0 := by rw [h₀, ← assoc, kernel.condition, zero_comp]
+    set c : Cone (parallelPair f 0) := KernelFork.ofι h h₁
+    refine ⟨c, Nonempty.intro ?_⟩
+    refine {lift := fun s ↦ ?_, fac := fun s j ↦ ?_, uniq := fun s m hm ↦ ?_}
+    · set u := s.π.app WalkingParallelPair.zero
+      dsimp [c] at u ⊢
+      have eq : s.π.app WalkingParallelPair.zero ≫ P.ι.map g = 0 := by
+        have h := s.w WalkingParallelPairHom.left
+        have h' := s.w WalkingParallelPairHom.right
+        dsimp at h h'
+        rw [← h', comp_zero] at h
+        rw [← cancel_mono (P.ι.map (kernel.ι p)), zero_comp]
+        rw [assoc, ← h₀']; exact h
+      refine kernel.lift (P.ι.map g) u eq ≫ (PreservesKernel.iso P.ι g).inv
+    · match j with
+      | WalkingParallelPair.zero =>
+        dsimp [c, h]
+        change _ ≫ P.ι.map (kernel.ι g) = _
+        rw [assoc, PreservesKernel.iso_inv_ι]
+        simp
+      | WalkingParallelPair.one =>
+        dsimp [c, h]
+        change _ ≫ P.ι.map (kernel.ι g) ≫ f = _
+        rw [assoc, ← assoc _ (P.ι.map (kernel.ι g)) f, PreservesKernel.iso_inv_ι]
+        simp only [ι_obj, ι_map, kernel.lift_ι_assoc, Z, A, c, h]
+        have h := s.w WalkingParallelPairHom.left
+        have h' := s.w WalkingParallelPairHom.right
+        dsimp at h h'
+        rw [← h', comp_zero] at h
+        rw [h, ← h', comp_zero]
+    · rw [← cancel_mono (PreservesKernel.iso P.ι g).hom]
       dsimp
-      rw [← kernel.lift_ι g f (cokernel.condition f), ← assoc, kernel.condition, zero_comp]
-    refine ⟨d, Nonempty.intro ?_⟩
-    have : Mono (P.ι.map (kernel.ι g)) := sorry
-    have lim := isLimitOfPreserves P.ι (kernelIsKernel h)
-    set c' := P.ι.mapCone (KernelFork.ofι (f := h) (kernel.ι h) (kernel.condition _))
-    set c'' : KernelFork (P.ι.map h) := KernelFork.ofι (P.ι.map (kernel.ι h))
-      (by rw [← P.ι.map_comp, kernel.condition, P.ι.map_zero])
-    have hc'' : IsLimit c'' := sorry
-    have hh : P.ι.map f = P.ι.map h ≫ P.ι.map (kernel.ι g) := by
-      rw [← P.ι.map_comp, kernel.lift_ι]
-    set d' : KernelFork (P.ι.map f) := KernelFork.ofι c''.ι
-      (by dsimp [c'']; rw [← kernel.lift_ι g f (cokernel.condition f)]
-          erw [← assoc, kernel.condition h]; rw [zero_comp])
-    have hd' : IsLimit d' := isKernelCompMono hc'' (P.ι.map (kernel.ι g)) hh
-    set e : P.ι.mapCone d ≅ d' := sorry
+      rw [assoc, Iso.inv_hom_id, comp_id]
+      rw [← cancel_mono (kernel.ι (P.ι.map g))]
+      rw [PreservesKernel.iso_hom, assoc, kernelComparison_comp_ι]
+      simp only [ι_obj, ι_map, kernel.lift_ι, Z, A, c, h, g]
+      exact hm WalkingParallelPair.zero
 
 lemma IsAbelian_of_containsKernelsAndCokernelsMono [P.ContainsZero] [P.ContainsKernels]
     [P.ContainsCokernelsOfMono] : P.IsAbelian := sorry
