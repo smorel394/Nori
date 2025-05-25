@@ -8,7 +8,7 @@ open CategoryTheory Category Limits
 
 variable {C : Type u} [Category.{v, u} C] [Abelian C]
 
-def coker_sequence {X₂ X₃ : C} (g : X₂ ⟶ X₃) (S' : ShortComplex C) (v : X₂ ⟶ S'.X₂)
+abbrev coker_sequence {X₂ X₃ : C} (g : X₂ ⟶ X₃) (S' : ShortComplex C) (v : X₂ ⟶ S'.X₂)
     (w : X₃ ⟶ S'.X₃) (comm : g ≫ w = v ≫ S'.g) : ShortComplex C where
   X₁ := X₂ ⊞ S'.X₁
   X₂ := S'.X₂

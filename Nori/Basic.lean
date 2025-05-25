@@ -5,10 +5,11 @@ import Mathlib.Algebra.Category.Grp.Zero
 import Nori.Mathlib.CategoryTheory.Limits.Shapes.Kernels
 import Nori.Mathlib.CategoryTheory.Preadditive.Yoneda.Basic
 import Nori.Mathlib.CategoryTheory.Limits.Shapes.Biproducts
+import Nori.Mathlib.CategoryTheory.Abelian.Subcategory
 
 noncomputable section
 
-universe u v
+universe u v w
 
 open CategoryTheory Category Limits Opposite ObjectProperty
 
@@ -18,28 +19,37 @@ namespace Nori
 
 variable (C : Type u) [Category.{v} C]
 
-abbrev RightMod := Cᵒᵖ ⥤ AddCommGrp.{v}
-
---def IsFinitelyPresented : ObjectProperty (RightMod C) :=
---  fun X ↦ ∃ (A B : C) (u : A ⟶ B), Nonempty (cokernel ((preadditiveYoneda).map u) ≅ X)
-
-def IsFinitelyPresented₂ : ObjectProperty (RightMod C) :=
-  fun X ↦ ∃ (A B : RightMod C) (u : A ⟶ X) (_ : Epi u) (v : B ⟶ kernel u) (_ : Epi v),
+def IsFinitelyPresented : ObjectProperty (Cᵒᵖ ⥤ AddCommGrp.{v}) :=
+  fun X ↦ ∃ (A B : Cᵒᵖ ⥤ AddCommGrp.{v}) (u : A ⟶ X) (_ : Epi u) (v : B ⟶ kernel u) (_ : Epi v),
   (A ⋙ forget AddCommGrp).IsRepresentable ∧ (B ⋙ forget AddCommGrp).IsRepresentable
 
---abbrev FinitelyPresented := (IsFinitelyPresented C).FullSubcategory
+abbrev FinitelyPresented := (IsFinitelyPresented C).FullSubcategory
 
-abbrev FinitelyPresented := (IsFinitelyPresented₂ C).FullSubcategory
+variable {C}
 
-/-
+lemma isFinitelyPresented_iff_shortComplex (X : Cᵒᵖ ⥤ AddCommGrp.{v}) :
+    IsFinitelyPresented C X ↔ ∃ (A B : Cᵒᵖ ⥤ AddCommGrp.{v}) (f : A ⟶ B)
+    (g : B ⟶ X) (_ : Epi g) (zero : f ≫ g = 0), (A ⋙ forget AddCommGrp).IsRepresentable ∧
+    (B ⋙ forget AddCommGrp).IsRepresentable ∧ (ShortComplex.mk f g zero).Exact := by
+  refine ⟨fun ⟨A, B, u, hu, v, hv, hA, hB⟩ ↦ ?_, fun ⟨A, B, f, g, hg, zero, hA, hB, h⟩ ↦ ?_⟩
+  · use B, A, v ≫ kernel.ι u, u, hu
+    simp only [Functor.comp_obj, Functor.flip_obj_obj, assoc, kernel.condition, comp_zero,
+      exists_and_left, exists_true_left]
+    refine ⟨hB, hA, ?_⟩
+    rw [ShortComplex.exact_iff_epi_kernel_lift]
+    dsimp
+    have eq : kernel.lift u (v ≫ kernel.ι u) (by simp) = v := by
+      rw [← cancel_mono (kernel.ι u)]
+      simp
+    rw [eq]
+    exact hv
+  · use B, A, g, hg, kernel.lift g f zero
+    simp only [Functor.comp_obj, Functor.flip_obj_obj, exists_and_left, exists_prop]
+    refine ⟨hB, ?_, hA⟩
+    rw [ShortComplex.exact_iff_epi_kernel_lift] at h
+    exact h
+
 instance : (IsFinitelyPresented C).IsClosedUnderIsomorphisms where
-  of_iso α h := by
-    obtain ⟨A, B, u, h⟩ := h
-    use A, B, u
-    exact Nonempty.intro (Classical.choice h ≪≫ α)
--/
-
-instance : (IsFinitelyPresented₂ C).IsClosedUnderIsomorphisms where
   of_iso α h := by
     obtain ⟨A, B, u, _, v, _, _, _⟩ := h
     use A, B, u ≫ α.hom, inferInstance,
@@ -49,66 +59,33 @@ section ZeroObject
 
 variable [HasZeroObject C]
 
-instance (X : Cᵒᵖ) : Unique (((0 : RightMod C) ⋙ forget AddCommGrp).obj X) := by
-  have : Unique ((forget AddCommGrp).obj (AddCommGrp.of PUnit.{v + 1})) := by
-    change Unique PUnit.{v+1}
+instance (X : Cᵒᵖ) : Unique (((0 : Cᵒᵖ ⥤ AddCommGrp.{w}) ⋙ forget AddCommGrp).obj X) := by
+  have : Unique ((forget AddCommGrp).obj (AddCommGrp.of PUnit.{w + 1})) := by
+    change Unique PUnit.{w + 1}
     infer_instance
   exact Equiv.unique ((forget AddCommGrp).mapIso (IsZero.isoZero (Functor.zero_obj X))
     ≪≫ ((forget AddCommGrp).mapIso (IsZero.isoZero (AddCommGrp.isZero_of_subsingleton
-      (AddCommGrp.of.{v} PUnit)))).symm).toEquiv
+      (AddCommGrp.of.{w} PUnit)))).symm).toEquiv
 
-instance : ((0 : RightMod C) ⋙ forget AddCommGrp).IsRepresentable where
+instance : ((0 : Cᵒᵖ ⥤ AddCommGrp.{v}) ⋙ forget AddCommGrp).IsRepresentable where
   has_representation := by
     use 0
     exact Nonempty.intro
       {homEquiv := Equiv.ofUnique _ _, homEquiv_comp _ _ := Subsingleton.elim _ _}
 
-lemma IsFinitelyPresented₂_of_isRepresentable (X : RightMod C)
-    (hX : (X ⋙ forget AddCommGrp).IsRepresentable) : IsFinitelyPresented₂ C X := by
+lemma IsFinitelyPresented_of_isRepresentable (X : Cᵒᵖ ⥤ AddCommGrp)
+    (hX : (X ⋙ forget AddCommGrp).IsRepresentable) : IsFinitelyPresented C X := by
   use X, 0, 𝟙 X, inferInstance, 0, IsZero.epi (IsZero.of_iso (isZero_zero _)
     (kernel.ofMono (𝟙 X))) _
   refine ⟨hX, inferInstance⟩
 
-/-instance : (IsFinitelyPresented C).ContainsZero where
-  exists_zero := by
-    use 0
-    refine ⟨isZero_zero _, ?_⟩
-    use 0, 0, 0
-    exact Nonempty.intro (cokernelIsoOfEq (preadditiveYoneda.map_zero 0 0) ≪≫
-      cokernelZeroIsoTarget ≪≫ Functor.mapZeroObject preadditiveYoneda)
--/
-
-instance : (IsFinitelyPresented₂ C).ContainsZero where
-  exists_zero := by
-    use 0
-    refine ⟨isZero_zero _, IsFinitelyPresented₂_of_isRepresentable C _ inferInstance⟩
-
-/-instance : HasZeroObject (FinitelyPresented C) where
-  zero := by
-    obtain ⟨Z, h₁, h₂⟩ := exists_prop_of_containsZero (IsFinitelyPresented C)
-    use ⟨Z, h₂⟩
-    refine {unique_to Y := ?_, unique_from Y := ?_}
-    · exact (unique_iff_subsingleton_and_nonempty _).mpr ⟨Subsingleton.intro
-        (fun _ _ ↦ h₁.eq_of_src _ _), Nonempty.intro 0⟩
-    · exact (unique_iff_subsingleton_and_nonempty _).mpr ⟨Subsingleton.intro
-        (fun _ _ ↦ h₁.eq_of_tgt _ _), Nonempty.intro 0⟩
--/
-
-instance : HasZeroObject (FinitelyPresented C) where
-  zero := by
-    obtain ⟨Z, h₁, h₂⟩ := exists_prop_of_containsZero (IsFinitelyPresented₂ C)
-    use ⟨Z, h₂⟩
-    refine {unique_to Y := ?_, unique_from Y := ?_}
-    · exact (unique_iff_subsingleton_and_nonempty _).mpr ⟨Subsingleton.intro
-        (fun _ _ ↦ h₁.eq_of_src _ _), Nonempty.intro 0⟩
-    · exact (unique_iff_subsingleton_and_nonempty _).mpr ⟨Subsingleton.intro
-        (fun _ _ ↦ h₁.eq_of_tgt _ _), Nonempty.intro 0⟩
+instance : (IsFinitelyPresented C).ContainsZero where
+  exists_zero :=
+    ⟨0, ⟨isZero_zero _, IsFinitelyPresented_of_isRepresentable _ inferInstance⟩⟩
 
 end ZeroObject
 
-section FiniteProducts
-
-variable {C}
+section Additive
 
 variable [Preadditive C] [HasFiniteProducts C]
 
@@ -187,7 +164,51 @@ def Functor.representableByEquivAdd {F : Cᵒᵖ ⥤ AddCommGrp.{v}} {Y : C} :
   left_inv r := rfl
   right_inv e := rfl
 
-instance (n : ℕ) (c : Fin n → RightMod C) [∀ i, (c i ⋙ forget AddCommGrp).IsRepresentable] :
+lemma proj (A B X : Cᵒᵖ ⥤ AddCommGrp.{v}) [(A ⋙ forget AddCommGrp).IsRepresentable]
+    [(B ⋙ forget AddCommGrp).IsRepresentable] (f : A ⟶ X) (g : B ⟶ X) [Epi g] :
+    ∃ (h : A ⟶ B), f = h ≫ g := by
+  set eA := Functor.representableByEquiv.toFun (A ⋙ forget AddCommGrp).representableBy
+  set eB := Functor.representableByEquiv.toFun (B ⋙ forget AddCommGrp).representableBy
+  set fA := Functor.representableByEquivAdd.toFun (A ⋙ forget AddCommGrp).representableBy
+  set fB := Functor.representableByEquivAdd.toFun (B ⋙ forget AddCommGrp).representableBy
+  have : Epi (g.app ((op (A ⋙ forget AddCommGrp).reprX))) := inferInstance
+  rw [AddCommGrp.epi_iff_surjective] at this
+  obtain ⟨x, hx⟩ := this (yonedaEquiv (eA.hom ≫ whiskerRight f (forget AddCommGrp)))
+  set h' : A ⋙ forget AddCommGrp ⟶ B ⋙ forget AddCommGrp := eA.inv ≫ yonedaEquiv.invFun x
+  have eq : h' ≫  whiskerRight g (forget AddCommGrp) = whiskerRight f (forget AddCommGrp) := by
+    dsimp [h']
+    rw [← cancel_epi eA.hom, ← assoc, ← assoc, Iso.hom_inv_id, id_comp]
+    apply yonedaEquiv.injective
+    rw [yonedaEquiv_comp]; erw [Equiv.apply_symm_apply]
+    simp only [Functor.comp_obj, whiskerRight_app, ConcreteCategory.forget_map_eq_coe, h']
+    rw [hx]
+    rfl
+  set y := (eB.symm.app (op (A ⋙ forget AddCommGrp).reprX)).toEquiv x
+  dsimp at y
+  set h := fA.inv ≫ preadditiveYoneda.map y ≫ fB.hom
+  have eq' : whiskerRight h (forget AddCommGrp) = h' := by
+    dsimp [h', h, y]
+    ext1; ext1 Y
+    dsimp
+
+  use h
+  ext1; ext1 Y
+  apply (forget AddCommGrp).map_injective
+  rw [NatTrans.comp_app, (forget AddCommGrp).map_comp, ← whiskerRight_app h, eq',
+    ← whiskerRight_app g, ← NatTrans.comp_app, eq, whiskerRight_app]
+
+
+
+
+
+end Additive
+
+section FiniteProducts
+
+variable [Preadditive C] [HasFiniteProducts C]
+
+instance (n : ℕ) (c : Fin n → (Cᵒᵖ ⥤ AddCommGrp.{v}))
+    [∀ i, (c i ⋙ forget AddCommGrp).IsRepresentable] :
     (biproduct c ⋙ forget AddCommGrp).IsRepresentable where
   has_representation := ⟨biproduct (fun i ↦ (c i ⋙ forget AddCommGrp).reprX),
      Nonempty.intro (Functor.representableByEquivAdd.invFun (biproduct.uniqueUpToIso _
@@ -195,7 +216,8 @@ instance (n : ℕ) (c : Fin n → RightMod C) [∀ i, (c i ⋙ forget AddCommGrp
      biproduct.mapIso (fun i ↦ Functor.representableByEquivAdd.toFun
     (c i ⋙ forget AddCommGrp).representableBy)))⟩
 
-def biproduct.KernelOfMap (n : ℕ) (A : Fin n → RightMod C) (B : Fin n → RightMod C) (u : (i : Fin n) → (A i ⟶ B i)) :
+def biproduct.KernelOfMap (n : ℕ) (A : Fin n → ((Cᵒᵖ ⥤ AddCommGrp.{v})))
+    (B : Fin n → ((Cᵒᵖ ⥤ AddCommGrp.{v}))) (u : (i : Fin n) → (A i ⟶ B i)) :
     IsLimit (KernelFork.ofι (f := biproduct.map u) (biproduct.map (fun i ↦ kernel.ι (u i)))
     (by rw [← biproduct.map_comp]; simp only [Functor.comp_obj, Functor.flip_obj_obj, kernel.condition]; exact biproduct.map_zero)) where
   lift s := by
@@ -232,13 +254,14 @@ def biproduct.KernelOfMap (n : ℕ) (A : Fin n → RightMod C) (B : Fin n → Ri
     simp only [assoc, biproduct.map_π] at this
     exact this
 
-def biproduct.map_kernel (n : ℕ) (A : Fin n → RightMod C) (B : Fin n → RightMod C) (u : (i : Fin n) → (A i ⟶ B i)) :
+def biproduct.map_kernel (n : ℕ) (A : Fin n → ((Cᵒᵖ ⥤ AddCommGrp.{v})))
+    (B : Fin n → ((Cᵒᵖ ⥤ AddCommGrp.{v}))) (u : (i : Fin n) → (A i ⟶ B i)) :
     biproduct (fun i ↦ kernel (u i)) ≅ kernel (biproduct.map u) := by
   set e := IsLimit.conePointUniqueUpToIso (biproduct.KernelOfMap n A B u) (kernelIsKernel (biproduct.map u))
   exact e
 
-lemma IsFinitelyPresented_isClosedUnderFiniteBiproduct (n : ℕ) (c : Fin n → RightMod C)
-    (hc : ∀ (i : Fin n), IsFinitelyPresented₂ C (c i)) : IsFinitelyPresented₂ C (biproduct c) := by
+lemma IsFinitelyPresented_isClosedUnderFiniteBiproduct (n : ℕ) (c : Fin n → ((Cᵒᵖ ⥤ AddCommGrp.{v})))
+    (hc : ∀ (i : Fin n), IsFinitelyPresented C (c i)) : IsFinitelyPresented C (biproduct c) := by
   choose A B u hu v hv Arep Brep using hc
   have : (biproduct A ⋙ forget AddCommGrp).IsRepresentable := inferInstance
   have : (biproduct B ⋙ forget AddCommGrp).IsRepresentable := inferInstance
@@ -246,30 +269,39 @@ lemma IsFinitelyPresented_isClosedUnderFiniteBiproduct (n : ℕ) (c : Fin n → 
   have := biproduct.map_epi v
   use biproduct.map v ≫ (biproduct.map_kernel n _ _ u).hom, inferInstance
 
-instance : HasFiniteBiproducts (FinitelyPresented C) where
-  out n :=
-    {has_biproduct c := by
-      refine HasBiproduct.mk {bicone := ?_, isBilimit := {isLimit := ?_, isColimit := ?_}}
-      · exact {pt := ⟨biproduct (fun i ↦ (c i).1),
-                 IsFinitelyPresented_isClosedUnderFiniteBiproduct n (fun i ↦ (c i).1) (fun i ↦ (c i).2)⟩,
-               π := biproduct.π (fun i ↦ (c i).1),
-               ι := biproduct.ι (fun i ↦ (c i).1),
-               ι_π j j' := by erw [biproduct.ι_π (fun i ↦ (c i).1) j j']
-                              by_cases eq : j = j'
-                              · simp only [eq, ↓reduceDIte]; rfl
-                              · simp only [eq, ↓reduceDIte]}
-      · refine {lift s := ?_, fac s := ?_, uniq s := ?_}
-        · exact (biproduct.isLimit (fun i ↦ (c i).1)).lift ((IsFinitelyPresented₂ C).ι.mapCone s)
-        · exact (biproduct.isLimit (fun i ↦ (c i).1)).fac ((IsFinitelyPresented₂ C).ι.mapCone s)
-        · exact (biproduct.isLimit (fun i ↦ (c i).1)).uniq ((IsFinitelyPresented₂ C).ι.mapCone s)
-      · refine {desc s := ?_, fac s := ?_, uniq s := ?_}
-        · exact (biproduct.isColimit (fun i ↦ (c i).1)).desc ((IsFinitelyPresented₂ C).ι.mapCocone s)
-        · exact (biproduct.isColimit (fun i ↦ (c i).1)).fac ((IsFinitelyPresented₂ C).ι.mapCocone s)
-        · exact (biproduct.isColimit (fun i ↦ (c i).1)).uniq ((IsFinitelyPresented₂ C).ι.mapCocone s)
-    }
+instance : (IsFinitelyPresented C).ContainsFiniteProducts where
+  contains_product n c := by
+    refine {contains_limit := ?_}
+    set A := biproduct (fun (i : Fin n) ↦ (c i).1)
+    have hA : IsFinitelyPresented C A := by
+      exact IsFinitelyPresented_isClosedUnderFiniteBiproduct n (fun (i : Fin n) ↦ (c i).1)
+       (fun i ↦ (c i).2)
+    set d : Fan c := Fan.mk (⟨A, hA⟩ : FinitelyPresented C)
+      (fun i ↦ biproduct.π (fun (i : Fin n) ↦ (c i).1) i)
+    refine ⟨d, Nonempty.intro {lift s := ?_, fac s i := ?_, uniq s m hm := ?_}⟩
+    · exact biproduct.lift (fun i ↦ s.π.app {as := i})
+    · dsimp [d]
+      simp
+    · refine biproduct.hom_ext _ _ (fun i ↦ ?_)
+      simp only [biproduct.lift_π, A, d]
+      rw [← hm {as := i}]
+      rfl
 
 instance : HasBinaryBiproducts (FinitelyPresented C) := hasBinaryBiproducts_of_finite_biproducts _
 
 end FiniteProducts
+
+section Cokernels
+
+variable {C}
+
+variable [Preadditive C] [HasFiniteProducts C]
+
+instance : (IsFinitelyPresented C).ContainsCokernels where
+  contains_cokernel {A B} f := by
+    refine {contains_colimit := ?_}
+    sorry
+
+end Cokernels
 
 end Nori
