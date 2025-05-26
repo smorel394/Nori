@@ -6,6 +6,7 @@ import Nori.Mathlib.CategoryTheory.Limits.Shapes.Kernels
 import Nori.Mathlib.CategoryTheory.Preadditive.Yoneda.Basic
 import Nori.Mathlib.CategoryTheory.Limits.Shapes.Biproducts
 import Nori.Mathlib.CategoryTheory.Abelian.Subcategory
+import Nori.AbelianLemmas
 
 noncomputable section
 
@@ -164,7 +165,12 @@ def Functor.representableByEquivAdd {F : Cᵒᵖ ⥤ AddCommGrp.{v}} {Y : C} :
   left_inv r := rfl
   right_inv e := rfl
 
-lemma proj (A B X : Cᵒᵖ ⥤ AddCommGrp.{v}) [(A ⋙ forget AddCommGrp).IsRepresentable]
+lemma Functor.representableByEquivAdd_forget {F : Cᵒᵖ ⥤ AddCommGrp.{v}} {Y : C}
+    (r : (F ⋙ forget AddCommGrp).RepresentableBy Y) :
+    isoWhiskerRight (Functor.representableByEquivAdd.toFun r) (forget AddCommGrp) =
+    Functor.representableByEquiv.toFun r := by aesop
+
+lemma IsRepresentable_proj (A B X : Cᵒᵖ ⥤ AddCommGrp.{v}) [(A ⋙ forget AddCommGrp).IsRepresentable]
     [(B ⋙ forget AddCommGrp).IsRepresentable] (f : A ⟶ X) (g : B ⟶ X) [Epi g] :
     ∃ (h : A ⟶ B), f = h ≫ g := by
   set eA := Functor.representableByEquiv.toFun (A ⋙ forget AddCommGrp).representableBy
@@ -183,23 +189,30 @@ lemma proj (A B X : Cᵒᵖ ⥤ AddCommGrp.{v}) [(A ⋙ forget AddCommGrp).IsRep
     simp only [Functor.comp_obj, whiskerRight_app, ConcreteCategory.forget_map_eq_coe, h']
     rw [hx]
     rfl
-  set y := (eB.symm.app (op (A ⋙ forget AddCommGrp).reprX)).toEquiv x
-  dsimp at y
-  set h := fA.inv ≫ preadditiveYoneda.map y ≫ fB.hom
+  set h := fA.inv ≫ preadditiveYoneda.map ((eB.symm.app
+    (op (A ⋙ forget AddCommGrp).reprX)).toEquiv x) ≫ fB.hom
+  have eqA : eA = isoWhiskerRight fA (forget AddCommGrp) :=
+    (Functor.representableByEquivAdd_forget _).symm
+  have eqB : eB = isoWhiskerRight fB (forget AddCommGrp) :=
+    (Functor.representableByEquivAdd_forget _).symm
   have eq' : whiskerRight h (forget AddCommGrp) = h' := by
-    dsimp [h', h, y]
-    ext1; ext1 Y
-    dsimp
-
+    have eqx : (yonedaEquiv (F := B ⋙ forget AddCommGrp)).symm x =
+        yoneda.map ((eB.symm.app (op (A ⋙ forget AddCommGrp).reprX)).toEquiv x) ≫ eB.hom := by
+      ext
+      dsimp [eB]
+      erw [yonedaEquiv_symm_app_apply]
+      simp [Functor.representableByEquiv]
+      erw [(B ⋙ forget AddCommGrp).representableBy.homEquiv_comp, Equiv.apply_symm_apply]
+      rfl
+    dsimp [h', h]
+    conv_rhs => erw [eqx]
+    rw [eqA, eqB]
+    rfl
   use h
   ext1; ext1 Y
   apply (forget AddCommGrp).map_injective
   rw [NatTrans.comp_app, (forget AddCommGrp).map_comp, ← whiskerRight_app h, eq',
     ← whiskerRight_app g, ← NatTrans.comp_app, eq, whiskerRight_app]
-
-
-
-
 
 end Additive
 
@@ -215,6 +228,18 @@ instance (n : ℕ) (c : Fin n → (Cᵒᵖ ⥤ AddCommGrp.{v}))
      (isBilimitOfPreserves (preadditiveYoneda (C := C)) (biproduct.isBilimit _)) ≪≫
      biproduct.mapIso (fun i ↦ Functor.representableByEquivAdd.toFun
     (c i ⋙ forget AddCommGrp).representableBy)))⟩
+
+lemma IsRepresentable_isClosedUnderBinaryBiproduct (A B : Cᵒᵖ ⥤ AddCommGrp.{v})
+    (hc : (A ⋙ forget AddCommGrp).IsRepresentable) (hB : (B ⋙ forget AddCommGrp).IsRepresentable) :
+    (biprod A B ⋙ forget AddCommGrp).IsRepresentable where
+  has_representation :=
+    have := preservesBinaryBiproduct_of_preservesBiproduct (preadditiveYoneda (C := C))
+    ⟨biprod (A ⋙ forget AddCommGrp).reprX (B ⋙ forget AddCommGrp).reprX, Nonempty.intro
+    ((Functor.representableByEquivAdd.invFun (biprod.uniqueUpToIso _ _ (isBinaryBilimitOfPreserves
+    (preadditiveYoneda (C := C)) ((BinaryBiproduct.isBilimit (A ⋙ forget AddCommGrp).reprX
+    (B ⋙ forget AddCommGrp).reprX))) ≪≫ biprod.mapIso (Functor.representableByEquivAdd.toFun
+    (A ⋙ forget AddCommGrp).representableBy) (Functor.representableByEquivAdd.toFun
+    (B ⋙ forget AddCommGrp).representableBy))))⟩
 
 def biproduct.KernelOfMap (n : ℕ) (A : Fin n → ((Cᵒᵖ ⥤ AddCommGrp.{v})))
     (B : Fin n → ((Cᵒᵖ ⥤ AddCommGrp.{v}))) (u : (i : Fin n) → (A i ⟶ B i)) :
@@ -293,14 +318,47 @@ end FiniteProducts
 
 section Cokernels
 
-variable {C}
-
 variable [Preadditive C] [HasFiniteProducts C]
 
 instance : (IsFinitelyPresented C).ContainsCokernels where
-  contains_cokernel {A B} f := by
+  contains_cokernel {K K'} u := by
     refine {contains_colimit := ?_}
-    sorry
+    obtain ⟨A, B, f, g, _, zero, hA, hB, exact⟩ :=
+      (isFinitelyPresented_iff_shortComplex K.1).mp K.2
+    obtain ⟨A', B', f', g', _, zero', hA', hB', exact'⟩ :=
+      (isFinitelyPresented_iff_shortComplex K'.1).mp K'.2
+    obtain ⟨v, comm⟩ := IsRepresentable_proj B B' K'.1 (g ≫ u) g'
+    set L : Cᵒᵖ ⥤ AddCommGrp := cokernel u
+    have hL : IsFinitelyPresented C L := by
+      rw [isFinitelyPresented_iff_shortComplex]
+      set S := coker_sequence g (ShortComplex.mk f' g' zero') v u comm
+      use S.X₁, S.X₂, S.f, S.g, inferInstance, S.zero
+      refine ⟨?_, hB', coker_sequence_exact g _ exact' inferInstance v u comm ⟩
+      exact IsRepresentable_isClosedUnderBinaryBiproduct B A' hB hA'
+    refine ⟨CokernelCofork.ofπ (f := u) (Z := ⟨L, hL⟩) (cokernel.π u (C := Cᵒᵖ ⥤ AddCommGrp))
+      (cokernel.condition u (C := Cᵒᵖ ⥤ AddCommGrp)),
+      Nonempty.intro {desc s := ?_, fac s j := ?_, uniq s m hm := ?_}⟩
+    · refine cokernel.desc u (s.ι.app WalkingParallelPair.one) ?_ (C := Cᵒᵖ ⥤ AddCommGrp)
+      erw [s.ι.naturality WalkingParallelPairHom.left]
+      dsimp
+      have := s.ι.naturality WalkingParallelPairHom.right
+      dsimp at this
+      rw [← this]
+      simp
+    · match j with
+      | WalkingParallelPair.zero =>
+        dsimp
+        erw [cokernel.condition u (C := Cᵒᵖ ⥤ AddCommGrp)]
+        have := s.ι.naturality WalkingParallelPairHom.right
+        dsimp at this
+        simp only [zero_comp, comp_id] at this
+        rw [zero_comp, this]
+      | WalkingParallelPair.one =>
+        dsimp
+        simp
+    · rw [← cancel_epi (cokernel.π u (C := Cᵒᵖ ⥤ AddCommGrp))]
+      simp only [coequalizer_as_cokernel, cokernel.π_desc]
+      exact hm WalkingParallelPair.one
 
 end Cokernels
 
