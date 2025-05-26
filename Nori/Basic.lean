@@ -362,4 +362,75 @@ instance : (IsFinitelyPresented C).ContainsCokernels where
 
 end Cokernels
 
+section Pseudokernels
+
+variable [Preadditive C]
+
+class HasPseudokernel {X Y : C} (f : X ⟶ Y) where
+    exists_pseudokernel : ∃ (Z : C) (g : Z ⟶ X) (zero : g ≫ f = 0),
+      Nonempty (IsLimit (KernelFork.ofι (f := preadditiveYoneda.map f) (preadditiveYoneda.map g)
+      (by rw [← Functor.map_comp, zero, Functor.map_zero])))
+
+variable (C) in
+class HasPseudokernels where
+    has_pseudokernel : ∀ {X Y : C} (f : X ⟶ Y), HasPseudokernel f
+
+instance [HasPseudokernels C] {X Y : C} (f : X ⟶ Y) : HasPseudokernel f :=
+  HasPseudokernels.has_pseudokernel f
+
+def pseudokernel {X Y : C} (f : X ⟶ Y) [HasPseudokernel f] : C :=
+  (HasPseudokernel.exists_pseudokernel (f := f)).choose
+
+def pseudokernel.ι {X Y : C} (f : X ⟶ Y) [HasPseudokernel f] : pseudokernel f ⟶ X :=
+  (HasPseudokernel.exists_pseudokernel (f := f)).choose_spec.choose
+
+lemma pseudokernel.condition {X Y : C} (f : X ⟶ Y) [HasPseudokernel f] : pseudokernel.ι f ≫ f = 0 :=
+  (HasPseudokernel.exists_pseudokernel (f := f)).choose_spec.choose_spec.choose
+
+def pseudokerlIsPseudokernel {X Y : C} (f : X ⟶ Y) [HasPseudokernel f] :
+    IsLimit (KernelFork.ofι (preadditiveYoneda.map (pseudokernel.ι f))
+    (by rw [← Functor.map_comp, pseudokernel.condition f, Functor.map_zero])) :=
+  Classical.choice (HasPseudokernel.exists_pseudokernel (f := f)).choose_spec.choose_spec.choose_spec
+
+end Pseudokernels
+
+section Kernels
+
+variable [Preadditive C] [HasPseudokernels C] [HasFiniteProducts C]
+
+instance : (IsFinitelyPresented C).ContainsKernelsOfEpi where
+  contains_kernel {K K'} u _ := by
+    refine {contains_limit := ?_}
+    obtain ⟨A, B, f, g, _, zero, hA, hB, exact⟩ :=
+      (isFinitelyPresented_iff_shortComplex K.1).mp K.2
+    obtain ⟨A', B', f', g', _, zero', hA', hB', exact'⟩ :=
+      (isFinitelyPresented_iff_shortComplex K'.1).mp K'.2
+    obtain ⟨v, comm⟩ := IsRepresentable_proj B B' K'.1 (g ≫ u) g'
+    set L := kernel (C := Cᵒᵖ ⥤ AddCommGrp) u
+    have hL : IsFinitelyPresented C L := sorry
+    refine ⟨KernelFork.ofι (C := FinitelyPresented C) (Z := ⟨L, hL⟩) (kernel.ι u
+      (C := Cᵒᵖ ⥤ AddCommGrp)) (kernel.condition u (C := Cᵒᵖ ⥤ AddCommGrp)),
+      Nonempty.intro {lift s := ?_, fac s j := ?_, uniq s m hm := ?_}⟩
+    · refine kernel.lift u (C := Cᵒᵖ ⥤ AddCommGrp) (s.π.app WalkingParallelPair.zero) ?_
+      have := s.π.naturality WalkingParallelPairHom.left
+      dsimp at this
+      rw [id_comp] at this; rw [← this]
+      have := s.π.naturality WalkingParallelPairHom.right
+      dsimp at this
+      rw [id_comp] at this; rw [this, comp_zero]
+    · match j with
+      | WalkingParallelPair.zero => dsimp; simp
+      | WalkingParallelPair.one =>
+        dsimp
+        erw [kernel.condition u (C := Cᵒᵖ ⥤ AddCommGrp)]; rw [comp_zero]
+        have := s.π.naturality WalkingParallelPairHom.right
+        dsimp at this
+        rw [id_comp, comp_zero] at this
+        exact this.symm
+    · rw [← cancel_mono (kernel.ι u (C := Cᵒᵖ ⥤ AddCommGrp))]
+      dsimp; simp only [kernel.lift_ι]
+      exact hm WalkingParallelPair.zero
+
+end Kernels
+
 end Nori
