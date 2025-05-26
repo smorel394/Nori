@@ -2,6 +2,7 @@ import Mathlib.CategoryTheory.Abelian.FunctorCategory
 import Mathlib.Algebra.Category.Grp.AB
 import Mathlib.CategoryTheory.ObjectProperty.ContainsZero
 import Mathlib.Algebra.Category.Grp.Zero
+import Mathlib.CategoryTheory.Abelian.DiagramLemmas.KernelCokernelComp
 import Nori.Mathlib.CategoryTheory.Limits.Shapes.Kernels
 import Nori.Mathlib.CategoryTheory.Preadditive.Yoneda.Basic
 import Nori.Mathlib.CategoryTheory.Limits.Shapes.Biproducts
@@ -28,7 +29,7 @@ abbrev FinitelyPresented := (IsFinitelyPresented C).FullSubcategory
 
 variable {C}
 
-lemma isFinitelyPresented_iff_shortComplex (X : Cᵒᵖ ⥤ AddCommGrp.{v}) :
+lemma isFinitelyPresented_iff_shortComplex_representable (X : Cᵒᵖ ⥤ AddCommGrp.{v}) :
     IsFinitelyPresented C X ↔ ∃ (A B : Cᵒᵖ ⥤ AddCommGrp.{v}) (f : A ⟶ B)
     (g : B ⟶ X) (_ : Epi g) (zero : f ≫ g = 0), (A ⋙ forget AddCommGrp).IsRepresentable ∧
     (B ⋙ forget AddCommGrp).IsRepresentable ∧ (ShortComplex.mk f g zero).Exact := by
@@ -324,13 +325,13 @@ instance : (IsFinitelyPresented C).ContainsCokernels where
   contains_cokernel {K K'} u := by
     refine {contains_colimit := ?_}
     obtain ⟨A, B, f, g, _, zero, hA, hB, exact⟩ :=
-      (isFinitelyPresented_iff_shortComplex K.1).mp K.2
+      (isFinitelyPresented_iff_shortComplex_representable K.1).mp K.2
     obtain ⟨A', B', f', g', _, zero', hA', hB', exact'⟩ :=
-      (isFinitelyPresented_iff_shortComplex K'.1).mp K'.2
+      (isFinitelyPresented_iff_shortComplex_representable K'.1).mp K'.2
     obtain ⟨v, comm⟩ := IsRepresentable_proj B B' K'.1 (g ≫ u) g'
     set L : Cᵒᵖ ⥤ AddCommGrp := cokernel u
     have hL : IsFinitelyPresented C L := by
-      rw [isFinitelyPresented_iff_shortComplex]
+      rw [isFinitelyPresented_iff_shortComplex_representable]
       set S := coker_sequence g (ShortComplex.mk f' g' zero') v u comm
       use S.X₁, S.X₂, S.f, S.g, inferInstance, S.zero
       refine ⟨?_, hB', coker_sequence_exact g _ exact' inferInstance v u comm ⟩
@@ -360,6 +361,11 @@ instance : (IsFinitelyPresented C).ContainsCokernels where
       simp only [coequalizer_as_cokernel, cokernel.π_desc]
       exact hm WalkingParallelPair.one
 
+lemma isFinitelyPresented_iff_shortComplex_finitelyPresented (X : Cᵒᵖ ⥤ AddCommGrp.{v}) :
+    IsFinitelyPresented C X ↔ ∃ (A B : Cᵒᵖ ⥤ AddCommGrp.{v}) (f : A ⟶ B)
+    (g : B ⟶ X) (_ : Epi g) (zero : f ≫ g = 0), (IsFinitelyPresented C A) ∧
+    (IsFinitelyPresented C B) ∧ (ShortComplex.mk f g zero).Exact := by sorry
+
 end Cokernels
 
 section Pseudokernels
@@ -387,7 +393,7 @@ def pseudokernel.ι {X Y : C} (f : X ⟶ Y) [HasPseudokernel f] : pseudokernel f
 lemma pseudokernel.condition {X Y : C} (f : X ⟶ Y) [HasPseudokernel f] : pseudokernel.ι f ≫ f = 0 :=
   (HasPseudokernel.exists_pseudokernel (f := f)).choose_spec.choose_spec.choose
 
-def pseudokerlIsPseudokernel {X Y : C} (f : X ⟶ Y) [HasPseudokernel f] :
+def pseudokernelIsPseudokernel {X Y : C} (f : X ⟶ Y) [HasPseudokernel f] :
     IsLimit (KernelFork.ofι (preadditiveYoneda.map (pseudokernel.ι f))
     (by rw [← Functor.map_comp, pseudokernel.condition f, Functor.map_zero])) :=
   Classical.choice (HasPseudokernel.exists_pseudokernel (f := f)).choose_spec.choose_spec.choose_spec
@@ -398,16 +404,41 @@ section Kernels
 
 variable [Preadditive C] [HasPseudokernels C] [HasFiniteProducts C]
 
+lemma finitelyPresented_presentation (X : FinitelyPresented C) (A' : Cᵒᵖ ⥤ AddCommGrp.{v})
+    [(A' ⋙ forget AddCommGrp).IsRepresentable] (f : A' ⟶ X.1) [Epi f] :
+    ∃ (B' : Cᵒᵖ ⥤ AddCommGrp.{v}) (g : B' ⟶ kernel f) (_ : Epi g),
+    (B' ⋙ forget AddCommGrp).IsRepresentable := sorry
+
+lemma kernelIsRepresentable (A B : Cᵒᵖ ⥤ AddCommGrp.{v}) [(A ⋙ forget AddCommGrp).IsRepresentable]
+    [(B ⋙ forget AddCommGrp).IsRepresentable] (f : A ⟶ B) :
+    (kernel f ⋙ forget AddCommGrp).IsRepresentable := by
+  set fA := Functor.representableByEquivAdd.toFun (A ⋙ forget AddCommGrp).representableBy
+  set fB := Functor.representableByEquivAdd.toFun (B ⋙ forget AddCommGrp).representableBy
+  obtain ⟨u, hu⟩ := preadditiveYoneda.map_surjective (fA.hom ≫ f ≫ fB.inv)
+  set K := pseudokernel u
+  refine Functor.RepresentableBy.isRepresentable (Y := K) (Functor.representableByEquivAdd.invFun ?_)
+  have := pseudokernelIsPseudokernel u
+--  have := IsLimit.conePointUniqueUpToIso this (kernelIsKernel f) -- need to use hu!
+
+
 instance : (IsFinitelyPresented C).ContainsKernelsOfEpi where
   contains_kernel {K K'} u _ := by
     refine {contains_limit := ?_}
     obtain ⟨A, B, f, g, _, zero, hA, hB, exact⟩ :=
-      (isFinitelyPresented_iff_shortComplex K.1).mp K.2
+      (isFinitelyPresented_iff_shortComplex_representable K.1).mp K.2
     obtain ⟨A', B', f', g', _, zero', hA', hB', exact'⟩ :=
-      (isFinitelyPresented_iff_shortComplex K'.1).mp K'.2
-    obtain ⟨v, comm⟩ := IsRepresentable_proj B B' K'.1 (g ≫ u) g'
+      (isFinitelyPresented_iff_shortComplex_representable K'.1).mp K'.2
     set L := kernel (C := Cᵒᵖ ⥤ AddCommGrp) u
-    have hL : IsFinitelyPresented C L := sorry
+    have hL : IsFinitelyPresented C L := by
+      let S := kernelCokernelCompSequence g u
+      have hS := kernelCokernelCompSequence_exact g u
+      have : Epi (S.map' 1 2) := ((S.sc hS.toIsComplex 1).exact_iff_epi (IsZero.eq_zero_of_tgt
+        (IsZero.of_iso (isZero_zero _) (cokernel.ofEpi g)) _)).mp (hS.exact 1 (by omega))
+      have h₀ : IsFinitelyPresented C (S.obj 0) := sorry
+      have h₁ : IsFinitelyPresented C (S.obj 1) := sorry
+      rw [isFinitelyPresented_iff_shortComplex_finitelyPresented]
+      use S.obj 0, S.obj 1, S.map' 0 1, S.map' 1 2, this, hS.toIsComplex.zero 0 (by omega), h₀, h₁
+      exact hS.exact 0 (by omega)
     refine ⟨KernelFork.ofι (C := FinitelyPresented C) (Z := ⟨L, hL⟩) (kernel.ι u
       (C := Cᵒᵖ ⥤ AddCommGrp)) (kernel.condition u (C := Cᵒᵖ ⥤ AddCommGrp)),
       Nonempty.intro {lift s := ?_, fac s j := ?_, uniq s m hm := ?_}⟩
