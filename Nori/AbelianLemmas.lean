@@ -52,13 +52,13 @@ abbrev coker_sequence {X₂ X₃ : C} (g : X₂ ⟶ X₃) (S' : ShortComplex C) 
       rw [← assoc, ← comm, assoc, cokernel.condition, comp_zero]
     · simp only [biprod.inr_desc_assoc, ShortComplex.zero_assoc, zero_comp, comp_zero]
 
-lemma coker_sequence_epi {X₂ X₃ : C} (g : X₂ ⟶ X₃) (S' : ShortComplex C) (epiS' : Epi S'.g)
+lemma coker_sequence_epi {X₂ X₃ : C} (g : X₂ ⟶ X₃) (S' : ShortComplex C) [Epi S'.g]
     (v : X₂ ⟶ S'.X₂) (w : X₃ ⟶ S'.X₃) (comm : g ≫ w = v ≫ S'.g) :
     Epi (coker_sequence g S' v w comm).g := by
   dsimp [coker_sequence]; infer_instance
 
 lemma coker_sequence_exact {X₂ X₃ : C} (g : X₂ ⟶ X₃) (S' : ShortComplex C)
-    (hS' : S'.Exact) (epiS : Epi g) (v : X₂ ⟶ S'.X₂) (w : X₃ ⟶ S'.X₃)
+    (hS' : S'.Exact) [Epi g] (v : X₂ ⟶ S'.X₂) (w : X₃ ⟶ S'.X₃)
     (comm : g ≫ w = v ≫ S'.g) : (coker_sequence g S' v w comm).Exact := by
   rw [ShortComplex.exact_iff_exact_up_to_refinements]
   intro A u zero
@@ -76,5 +76,25 @@ lemma coker_sequence_exact {X₂ X₃ : C} (g : X₂ ⟶ X₃) (S' : ShortComple
   dsimp [coker_sequence]
   rw [biprod.lift_desc, Preadditive.neg_comp, ← hc]
   simp only [assoc, Preadditive.comp_sub, neg_sub, add_sub_cancel]
+
+lemma coker_map_isIso {X₂ X₃ : C} (g : X₂ ⟶ X₃) (S' : ShortComplex C)
+    (hS' : S'.Exact) [Epi g] [Epi S'.g] (v : X₂ ⟶ S'.X₂) (w : X₃ ⟶ S'.X₃)
+    (comm : g ≫ w = v ≫ S'.g) :
+    IsIso (cokernel.map (coker_sequence g S' v w comm).f w (biprod.desc g 0) S'.g
+    (biprod.hom_ext' _ _ (by simp [comm.symm]) (by simp))) := by
+  set h := Classical.choice ((coker_sequence g S' v w comm).exact_and_epi_g_iff_g_is_cokernel.mp
+    ⟨coker_sequence_exact g S' hS' v w comm, coker_sequence_epi g S' v w comm⟩)
+  have eq : cokernel.map (coker_sequence g S' v w comm).f w (biprod.desc g 0) S'.g
+      (biprod.hom_ext' _ _ (by simp [comm.symm]) (by simp)) =
+      ((cokernelIsCokernel (coker_sequence g S' v w comm).f).coconePointUniqueUpToIso h).hom := by
+    rw [← cancel_epi (cokernel.π _)]
+    have eq : cokernel.π (coker_sequence g S' v w comm).f = (Cofork.ofπ (cokernel.π
+      (coker_sequence g S' v w comm).f) ((cokernel.condition _).trans zero_comp.symm)).ι.app
+      WalkingParallelPair.one := rfl
+    conv_rhs => congr; rw [eq]
+    rw [IsColimit.comp_coconePointUniqueUpToIso_hom]
+    simp only [cokernel.π_desc, Cofork.ofπ_pt, Cofork.ofπ_ι_app]
+  rw [eq]
+  infer_instance
 
 end Abelian
