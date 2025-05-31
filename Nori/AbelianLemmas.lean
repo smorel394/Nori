@@ -6,7 +6,38 @@ universe u v
 
 open CategoryTheory Category Limits
 
-variable {C : Type u} [Category.{v, u} C] [Abelian C]
+variable {C : Type u} [Category.{v} C]
+
+namespace CategoryTheory.Limits
+
+variable [Preadditive C] {X Y : C} {f : X ⟶ Y} (c : CokernelCofork f)
+
+def IsCokernelOfSplit {Z : C} {p : Y ⟶ Z} (zero : f ≫ p = 0) (hp : SplitEpi p)
+    (hf : ∃ (g : Y ⟶ X), p ≫ hp.section_ = g ≫ f + 𝟙 _) :
+    IsColimit (CokernelCofork.ofπ (f := f) p zero) where
+  desc s := hp.section_ ≫ Cofork.π s
+  fac s j := match j with
+  | WalkingParallelPair.zero => by
+    dsimp
+    rw [CokernelCofork.π_eq_zero s, zero, zero_comp]
+  | WalkingParallelPair.one => by
+    dsimp
+    rw [← assoc, hf.choose_spec]
+    simp
+  uniq s m hm := by
+    have := hp.epi
+    rw [← cancel_epi p]
+    dsimp
+    rw [← assoc, hf.choose_spec]
+    simp
+    exact hm WalkingParallelPair.one
+
+end CategoryTheory.Limits
+
+
+section Abelian
+
+variable [Abelian C]
 
 abbrev coker_sequence {X₂ X₃ : C} (g : X₂ ⟶ X₃) (S' : ShortComplex C) (v : X₂ ⟶ S'.X₂)
     (w : X₃ ⟶ S'.X₃) (comm : g ≫ w = v ≫ S'.g) : ShortComplex C where
@@ -45,3 +76,5 @@ lemma coker_sequence_exact {X₂ X₃ : C} (g : X₂ ⟶ X₃) (S' : ShortComple
   dsimp [coker_sequence]
   rw [biprod.lift_desc, Preadditive.neg_comp, ← hc]
   simp only [assoc, Preadditive.comp_sub, neg_sub, add_sub_cancel]
+
+end Abelian
