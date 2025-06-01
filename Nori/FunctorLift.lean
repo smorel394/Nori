@@ -1,4 +1,4 @@
-import Nori.Nori.FinitelyPresented
+import Nori.FinitelyPresented
 
 noncomputable section
 
@@ -13,8 +13,6 @@ namespace Nori
 variable (C : Type u) [Category.{v} C]
 
 section Functor
-
-variable (C)
 
 variable [Preadditive C] [HasFiniteProducts C]
 
@@ -34,6 +32,15 @@ instance : (FinitelyPresented.embedding C).Full := by
 instance : (FinitelyPresented.embedding C).Faithful := by
   dsimp [FinitelyPresented.embedding]
   infer_instance
+
+def IsFinitelyPresented.presentation_iso₂ {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
+    ⟨X, hX⟩ ≅ cokernel ((FinitelyPresented.embedding C).map (hX.presentation_map_f)) :=
+  (IsFinitelyPresented C).isoMk (hX.presentation_iso ≪≫ (PreservesCokernel.iso
+  (IsFinitelyPresented C).ι ((FinitelyPresented.embedding C).map hX.presentation_map_f)).symm)
+
+abbrev IsFinitelyPresented.presentation_map_p₂ {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
+    (FinitelyPresented.embedding C).obj (hX.presentation_B) ⟶ ⟨X, hX⟩ :=
+  cokernel.π ((FinitelyPresented.embedding C).map hX.presentation_map_f) ≫ hX.presentation_iso₂.inv
 
 variable {D : Type u'} [Category.{v'} D] [Preadditive D] [HasCokernels D]
 
@@ -319,12 +326,9 @@ def FinitelyPresented.embeddingLiftIso (F : C ⥤ D) [F.Additive] :
       hX.presentation_iso.inv)).choose_spec]
     exact hX.presentation_map_comm₂ hY (preadditiveYoneda.map f)
 
-/-
-def FinitelyPresented.lift_preservesCokernels₁ (X : FinitelyPresented C)
+def FinitelyPresented.lift_preservesCokernels_aux₁ (X : FinitelyPresented C)
     (F : C ⥤ D) [F.Additive] :
-    PreservesColimit (parallelPair X.2.presentation_map_f 0) (FinitelyPresented.lift F) where
-  preserves {c} hc := by sorry
--/
+    Epi ((FinitelyPresented.lift F).map X.2.presentation_map_p₂) := sorry
 
 def FinitelyPresented.lift_preservesCokernels {X Y : FinitelyPresented C} (u : X ⟶ Y)
     (F : C ⥤ D) [F.Additive] :
