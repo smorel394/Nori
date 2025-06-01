@@ -898,10 +898,37 @@ def FinitelyPresented.embeddingLiftIso (F : C ⥤ D) [F.Additive] :
       hX.presentation_iso.inv)).choose_spec]
     exact hX.presentation_map_comm₂ hY (preadditiveYoneda.map f)
 
-def FinitelyPresented.lift_preservesCokernels {X Y : FinitelyPresented C} (f : X ⟶ Y)
+/-
+def FinitelyPresented.lift_preservesCokernels₁ (X : FinitelyPresented C)
     (F : C ⥤ D) [F.Additive] :
-    PreservesColimit (parallelPair f 0) (FinitelyPresented.lift F) where
+    PreservesColimit (parallelPair X.2.presentation_map_f 0) (FinitelyPresented.lift F) where
   preserves {c} hc := by sorry
+-/
+
+def FinitelyPresented.lift_preservesCokernels {X Y : FinitelyPresented C} (u : X ⟶ Y)
+    (F : C ⥤ D) [F.Additive] :
+    PreservesColimit (parallelPair u 0) (FinitelyPresented.lift F) where
+  preserves {c} hc := by
+    refine Nonempty.intro ?_
+    set Z := c.pt
+    set q : Y ⟶ Z := Cofork.π c
+    set A := X.2.presentation_A
+    set B := X.2.presentation_B
+    set A' := Y.2.presentation_A
+    set B' := Y.2.presentation_B
+    set f : A ⟶ B := X.2.presentation_map_f
+    set f' : A' ⟶ B' := Y.2.presentation_map_f
+    set iso := X.2.presentation_iso
+    set iso' := Y.2.presentation_iso
+    set p : preadditiveYoneda.obj B ⟶ X.1 := cokernel.π (preadditiveYoneda.map f) ≫ iso.inv
+    set p' : preadditiveYoneda.obj B' ⟶ Y.1 := cokernel.π (preadditiveYoneda.map f') ≫ iso'.inv
+    set v : B ⟶ B' := X.2.presentation_mapB Y.2 u
+    set w : A ⟶ A' := X.2.presentation_mapA Y.2 u
+    have comm₁ : f ≫ v = w ≫ f' := X.2.presentation_map_comm₁ Y.2 u
+    have comm₂ : p ≫ u = preadditiveYoneda.map v ≫ p' := (X.2.presentation_map_comm₂ Y.2 u).symm
+    set G := FinitelyPresented.lift F
+    sorry
+
 
 end Functor
 
