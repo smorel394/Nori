@@ -49,27 +49,15 @@ def IsFinitelyPresented.presentation_iso₂ {X : Cᵒᵖ ⥤ AddCommGrp} (hX : I
   (IsFinitelyPresented C).isoMk (hX.presentation_iso ≪≫ (PreservesCokernel.iso
   (IsFinitelyPresented C).ι ((FinitelyPresented.embedding C).map hX.presentation_map_f)).symm)
 
-/-
-abbrev IsFinitelyPresented.presentation_map_p₂ {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
-    (FinitelyPresented.embedding C).obj (hX.presentation_B) ⟶ ⟨X, hX⟩ :=
-  cokernel.π ((FinitelyPresented.embedding C).map hX.presentation_map_f) ≫ hX.presentation_iso₂.inv
--/
-
 abbrev IsFinitelyPresented.presentation_map_p₂ {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
     (FinitelyPresented.embedding C).obj (hX.presentation_B) ⟶ ⟨X, hX⟩ :=
   hX.presentation_map_p
-
-/-
-lemma IsFinitelyPresented.presentation_zero {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
-    (FinitelyPresented.embedding C).map hX.presentation_map_f ≫ hX.presentation_map_p₂ = 0 := by
-  dsimp [IsFinitelyPresented.presentation_map_p₂]
-  rw [← assoc, cokernel.condition, zero_comp]
--/
 
 lemma IsFinitelyPresented.presentation_zero {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
     (FinitelyPresented.embedding C).map hX.presentation_map_f ≫ hX.presentation_map_p₂ = 0 :=
   hX.presentation_map_f_p
 
+@[reassoc]
 lemma IsFinitelyPresented.presentation_map_f_p₂ {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
     (FinitelyPresented.embedding C).map hX.presentation_map_f ≫ hX.presentation_map_p₂ = 0 :=
   hX.presentation_map_f_p
@@ -106,122 +94,57 @@ def IsFinitelyPresented.presentation_colimit {X : Cᵒᵖ ⥤ AddCommGrp} (hX : 
       simp only [comp_id]
       erw [id_comp]
 
+def IsFinitelyPresented.presentation_mapB {X X' : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X)
+    (hX' : IsFinitelyPresented C X') (u : X ⟶ X') : hX.presentation_B ⟶ hX'.presentation_B :=
+  preadditiveYoneda.preimage (IsRepresentable_proj _ _ _  (hX.presentation_map_p ≫ u)
+      hX'.presentation_map_p).choose
+
+@[reassoc]
+lemma IsFinitelyPresented.presentation_map_comm₂ {X X' : Cᵒᵖ ⥤ AddCommGrp}
+    (hX : IsFinitelyPresented C X) (hX' : IsFinitelyPresented C X') (u : X ⟶ X') :
+    preadditiveYoneda.map (hX.presentation_mapB hX' u) ≫ hX'.presentation_map_p =
+    hX.presentation_map_p ≫ u := by
+  dsimp [IsFinitelyPresented.presentation_mapB]
+  rw [preadditiveYoneda.map_preimage]
+  exact ((IsRepresentable_proj _ _ _  (hX.presentation_map_p ≫ u)
+      hX'.presentation_map_p).choose_spec).symm
+
 def IsFinitelyPresented.presentation_mapA {X X' : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X)
     (hX' : IsFinitelyPresented C X') (u : X ⟶ X') : hX.presentation_A ⟶ hX'.presentation_A := by
-  set A := hX.presentation_A
-  set B := hX.presentation_B
-  set f : A ⟶ B := hX.presentation_map_f
-  set e : X ≅ cokernel (preadditiveYoneda.map f) := hX.presentation_iso
-  set A' := hX'.presentation_A
-  set B' := hX'.presentation_B
-  set f' : A' ⟶ B' := hX'.presentation_map_f
-  set e' : X' ≅ cokernel (preadditiveYoneda.map f') := hX'.presentation_iso
-  set v : preadditiveYoneda.obj B ⟶ preadditiveYoneda.obj B' :=
-      (IsRepresentable_proj _ _ _  (cokernel.π (preadditiveYoneda.map f) ≫ e.inv ≫ u)
-      (cokernel.π (preadditiveYoneda.map f') ≫ e'.inv)).choose
-  have comm : cokernel.π (preadditiveYoneda.map f) ≫ e.inv ≫ u =
-      v ≫ cokernel.π (preadditiveYoneda.map f') ≫ e'.inv := (IsRepresentable_proj _ _ _
-      (cokernel.π (preadditiveYoneda.map f) ≫ e.inv ≫ u)
-      (cokernel.π (preadditiveYoneda.map f') ≫ e'.inv)).choose_spec
-  set S := ShortComplex.mk (preadditiveYoneda.map f') (cokernel.π _) (cokernel.condition _)
-  have hS := S.exact_of_g_is_cokernel (cokernelIsCokernel _)
+  set S := ShortComplex.mk (preadditiveYoneda.map hX'.presentation_map_f) hX'.presentation_map_p
+    hX'.presentation_map_f_p
+  have hS := S.exact_of_g_is_cokernel hX'.presentation_cokernel
   rw [S.exact_iff_epi_kernel_lift] at hS
-  have left := IsRepresentable_proj _ _ _ (kernel.lift _ (preadditiveYoneda.map f ≫ v)
-      (by rw [← cancel_mono e'.inv, assoc, assoc, ← comm, ← assoc, ← assoc, cokernel.condition,
-              zero_comp, zero_comp, zero_comp]))
-      (kernel.lift S.g S.f S.zero)
-  set w := left.choose
-  exact (preadditiveYoneda.map_surjective w).choose
-
-def IsFinitelyPresented.presentation_mapB {X X' : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X)
-    (hX' : IsFinitelyPresented C X') (u : X ⟶ X') : hX.presentation_B ⟶ hX'.presentation_B := by
-  set A := hX.presentation_A
-  set B := hX.presentation_B
-  set f : A ⟶ B := hX.presentation_map_f
-  set e : X ≅ cokernel (preadditiveYoneda.map f) := hX.presentation_iso
-  set A' := hX'.presentation_A
-  set B' := hX'.presentation_B
-  set f' : A' ⟶ B' := hX'.presentation_map_f
-  set e' : X' ≅ cokernel (preadditiveYoneda.map f') := hX'.presentation_iso
-  set v : preadditiveYoneda.obj B ⟶ preadditiveYoneda.obj B' :=
-      (IsRepresentable_proj _ _ _  (cokernel.π (preadditiveYoneda.map f) ≫ e.inv ≫ u)
-      (cokernel.π (preadditiveYoneda.map f') ≫ e'.inv)).choose
-  exact (preadditiveYoneda.map_surjective v).choose
+  exact preadditiveYoneda.preimage (IsRepresentable_proj _ _ _ (kernel.lift hX'.presentation_map_p
+    (preadditiveYoneda.map hX.presentation_map_f ≫ preadditiveYoneda.map (hX.presentation_mapB hX'
+    u)) (by rw [assoc, hX.presentation_map_comm₂ hX' u, ← assoc,
+            hX.presentation_map_f_p, zero_comp])) (kernel.lift S.g S.f S.zero)).choose
 
 @[reassoc]
 lemma IsFinitelyPresented.presentation_map_comm₁ {X X' : Cᵒᵖ ⥤ AddCommGrp}
     (hX : IsFinitelyPresented C X) (hX' : IsFinitelyPresented C X') (u : X ⟶ X') :
     hX.presentation_map_f ≫ hX.presentation_mapB hX' u =
     hX.presentation_mapA hX' u ≫ hX'.presentation_map_f := by
-  set A := hX.presentation_A
-  set B := hX.presentation_B
-  set f : A ⟶ B := hX.presentation_map_f
-  set e : X ≅ cokernel (preadditiveYoneda.map f) := hX.presentation_iso
-  set A' := hX'.presentation_A
-  set B' := hX'.presentation_B
-  set f' : A' ⟶ B' := hX'.presentation_map_f
-  set e' : X' ≅ cokernel (preadditiveYoneda.map f') := hX'.presentation_iso
-  set v : preadditiveYoneda.obj B ⟶ preadditiveYoneda.obj B' :=
-      (IsRepresentable_proj _ _ _  (cokernel.π (preadditiveYoneda.map f) ≫ e.inv ≫ u)
-      (cokernel.π (preadditiveYoneda.map f') ≫ e'.inv)).choose
-  have comm : cokernel.π (preadditiveYoneda.map f) ≫ e.inv ≫ u =
-      v ≫ cokernel.π (preadditiveYoneda.map f') ≫ e'.inv := (IsRepresentable_proj _ _ _
-      (cokernel.π (preadditiveYoneda.map f) ≫ e.inv ≫ u)
-      (cokernel.π (preadditiveYoneda.map f') ≫ e'.inv)).choose_spec
-  set S := ShortComplex.mk (preadditiveYoneda.map f') (cokernel.π _) (cokernel.condition _)
-  have hS := S.exact_of_g_is_cokernel (cokernelIsCokernel _)
-  rw [S.exact_iff_epi_kernel_lift] at hS
-  have left := IsRepresentable_proj _ _ _ (kernel.lift _ (preadditiveYoneda.map f ≫ v)
-      (by rw [← cancel_mono e'.inv, assoc, assoc, ← comm, ← assoc, ← assoc, cokernel.condition,
-              zero_comp, zero_comp, zero_comp]))
-      (kernel.lift S.g S.f S.zero)
-  set w := left.choose
-  have comm' := left.choose_spec
-  dsimp at comm'
   apply preadditiveYoneda.map_injective
-  rw [Functor.map_comp, IsFinitelyPresented.presentation_mapB]
-  erw [(preadditiveYoneda.map_surjective v).choose_spec]
-  rw [Functor.map_comp, IsFinitelyPresented.presentation_mapA]
-  erw [(preadditiveYoneda.map_surjective w).choose_spec]
-  have eq : preadditiveYoneda.map f' = _ := (kernel.lift_ι S.g S.f S.zero).symm
-  conv_rhs => rw [eq, ← assoc, ← comm', kernel.lift_ι]
-
-@[reassoc]
-lemma IsFinitelyPresented.presentation_map_comm₂ {X X' : Cᵒᵖ ⥤ AddCommGrp}
-    (hX : IsFinitelyPresented C X) (hX' : IsFinitelyPresented C X') (u : X ⟶ X') :
-    preadditiveYoneda.map (hX.presentation_mapB hX' u) ≫ cokernel.π _ ≫ hX'.presentation_iso.inv =
-    cokernel.π _ ≫ hX.presentation_iso.inv ≫ u := by
-  set A := hX.presentation_A
-  set B := hX.presentation_B
-  set f : A ⟶ B := hX.presentation_map_f
-  set e : X ≅ cokernel (preadditiveYoneda.map f) := hX.presentation_iso
-  set A' := hX'.presentation_A
-  set B' := hX'.presentation_B
-  set f' : A' ⟶ B' := hX'.presentation_map_f
-  set e' : X' ≅ cokernel (preadditiveYoneda.map f') := hX'.presentation_iso
-  set v : preadditiveYoneda.obj B ⟶ preadditiveYoneda.obj B' :=
-      (IsRepresentable_proj _ _ _  (cokernel.π (preadditiveYoneda.map f) ≫ e.inv ≫ u)
-      (cokernel.π (preadditiveYoneda.map f') ≫ e'.inv)).choose
-  have comm : cokernel.π (preadditiveYoneda.map f) ≫ e.inv ≫ u =
-      v ≫ cokernel.π (preadditiveYoneda.map f') ≫ e'.inv := (IsRepresentable_proj _ _ _
-      (cokernel.π (preadditiveYoneda.map f) ≫ e.inv ≫ u)
-      (cokernel.π (preadditiveYoneda.map f') ≫ e'.inv)).choose_spec
-  erw [(preadditiveYoneda.map_surjective v).choose_spec, ← comm]
-
-@[reassoc]
-lemma IsFinitelyPresented.presentation_map_comm₂' (X X' : FinitelyPresented C) (u : X ⟶ X') :
-    (FinitelyPresented.embedding C).map (X.2.presentation_mapB X'.2 u) ≫ cokernel.π _ ≫
-    X'.2.presentation_iso₂.inv = cokernel.π _ ≫ X.2.presentation_iso₂.inv ≫ u := by
-  dsimp [IsFinitelyPresented.presentation_iso₂]
-  erw [PreservesCokernel.π_iso_hom_assoc (IsFinitelyPresented C).ι]
-  erw [X.2.presentation_map_comm₂ X'.2 u]
-  slice_rhs 1 2 => erw [PreservesCokernel.π_iso_hom_assoc (IsFinitelyPresented C).ι]
-  rfl
+  dsimp [IsFinitelyPresented.presentation_mapA]
+  rw [Functor.map_comp, Functor.map_comp, preadditiveYoneda.map_preimage]
+  set S := ShortComplex.mk (preadditiveYoneda.map hX'.presentation_map_f) hX'.presentation_map_p
+    hX'.presentation_map_f_p
+  have hS := S.exact_of_g_is_cokernel hX'.presentation_cokernel
+  rw [S.exact_iff_epi_kernel_lift] at hS
+  have := (IsRepresentable_proj _ _ _ (kernel.lift hX'.presentation_map_p
+    (preadditiveYoneda.map hX.presentation_map_f ≫ preadditiveYoneda.map (hX.presentation_mapB hX'
+    u)) (by rw [assoc, hX.presentation_map_comm₂ hX' u, ← assoc,
+            hX.presentation_map_f_p, zero_comp])) (kernel.lift S.g S.f S.zero)).choose_spec
+  apply_fun (fun x ↦ x ≫ kernel.ι S.g) at this
+  simp only [preadditiveYoneda_obj, Functor.comp_obj, Functor.flip_obj_obj, kernel.lift_ι, assoc,
+    S] at this
+  exact this
 
 @[reassoc]
 lemma IsFinitelyPresented.presentation_map_comm₂'' (X X' : FinitelyPresented C) (u : X ⟶ X') :
     (FinitelyPresented.embedding C).map (X.2.presentation_mapB X'.2 u) ≫ X'.2.presentation_map_p₂ =
-    X.2.presentation_map_p₂ ≫ u := by sorry
+    X.2.presentation_map_p₂ ≫ u := X.2.presentation_map_comm₂ X'.2 u
 
 lemma presentation_cokernel_zero {X Y : FinitelyPresented C} (u : X ⟶ Y) :
     (FinitelyPresented.embedding C).map (biprod.desc (X.2.presentation_mapB Y.2 u) Y.2.presentation_map_f) ≫
@@ -254,83 +177,68 @@ def presentation_cokernel {X Y : FinitelyPresented C} (u : X ⟶ Y) {c : Cokerne
     Y.2.presentation_map_f_p
   have hS' := S'.exact_and_epi_g_iff_g_is_cokernel.mpr (Nonempty.intro Y.2.presentation_cokernel)
   have := hS.2
-  have := coker_sequence_exact S.g S' hS'.1 (preadditiveYoneda.map (X.2.presentation_mapB Y.2 u))
-    u
-  refine (IsColimit.equivOfNatIsoOfIso (F := parallelPair (biprod.desc (preadditiveYoneda.map
-    (X.2.presentation_mapB Y.2 u)) (preadditiveYoneda.map Y.2.presentation_map_f)) 0) (G :=
-    (parallelPair ((FinitelyPresented.embedding C).map (biprod.desc (X.2.presentation_mapB Y.2 u)
-    Y.2.presentation_map_f)) 0 ⋙ (IsFinitelyPresented C).ι)) ?_
-    (CokernelCofork.ofπ (f := (biprod.desc (preadditiveYoneda.map
-    (X.2.presentation_mapB Y.2 u)) (preadditiveYoneda.map Y.2.presentation_map_f)))
-    (Y.2.presentation_p ≫ sorry) sorry (Z := (IsFinitelyPresented C).ι.obj c.pt))
-    _ ?_).toFun ?_
-  · sorry
-  · sorry
-  · sorry
-
-
-/-
-    refine Nonempty.intro ?_
-    set Z := c.pt
-    set q : Y ⟶ Z := Cofork.π c
-    set A := X.2.presentation_A
-    set B := X.2.presentation_B
-    set A' := Y.2.presentation_A
-    set B' := Y.2.presentation_B
-    set f : A ⟶ B := X.2.presentation_map_f
-    set f' : A' ⟶ B' := Y.2.presentation_map_f
-    set iso := X.2.presentation_iso
-    set iso' := Y.2.presentation_iso
-    set p : (FinitelyPresented.embedding C).obj B ⟶ X := X.2.presentation_map_p₂
-    set p' : (FinitelyPresented.embedding C).obj B' ⟶ Y := Y.2.presentation_map_p₂
-    set v : B ⟶ B' := X.2.presentation_mapB Y.2 u
-    set w : A ⟶ A' := X.2.presentation_mapA Y.2 u
-    have comm₁ : f ≫ v = w ≫ f' := X.2.presentation_map_comm₁ Y.2 u
-    have comm₂ : p ≫ u = (FinitelyPresented.embedding C).map v ≫ p' :=
-      (IsFinitelyPresented.presentation_map_comm₂' X Y u).symm
-    set S := coker_sequence (C := Cᵒᵖ ⥤ AddCommGrp) p (ShortComplex.mk
-      ((FinitelyPresented.embedding C).map f')
-      p' Y.2.presentation_zero) ((FinitelyPresented.embedding C).map v) u comm₂
-    set e := PreservesCokernel.iso (IsFinitelyPresented C).ι u
-    set e' := hc.coconePointUniqueUpToIso (cokernelIsCokernel u)
-    set Q : ((FinitelyPresented.embedding C).obj B').1 ⟶ Z.1 := S.g ≫ e.inv ≫ e'.inv
-    set G : ((FinitelyPresented.embedding C).obj (B ⊞ A')).1 ⟶
-      ((FinitelyPresented.embedding C).obj B').1 :=
-      ((FinitelyPresented.embedding C).mapBiprod _ _).hom ≫
-      ((IsFinitelyPresented C).ι.mapBiprod _ _).hom ≫ S.f
-    have eq₀ : (embedding C).map (biprod.desc v f') ≫ Q = 0 := by
-      apply (IsFinitelyPresented C).ι.map_injective
-      rw [← cancel_epi ((FinitelyPresented.embedding C ⋙
-        (IsFinitelyPresented C).ι).mapBiprod B A').inv]
-      rw [Functor.map_comp, Functor.map_zero, ← cancel_mono
-        ((IsFinitelyPresented C).ι.mapIso e').hom]
-      rw [← cancel_mono e.hom]
-      dsimp [Q]
-      slice_lhs 6 7 => change ((IsFinitelyPresented C).ι.mapIso e').inv ≫
-                         ((IsFinitelyPresented C).ι.mapIso e').hom
-                       rw [Iso.inv_hom_id]
-      rw [id_comp]
-      slice_lhs 5 6 => rw [Iso.inv_hom_id]
-      dsimp
-      simp only [comp_id, comp_zero, zero_comp, Q]
-      refine biprod.hom_ext' _ _ ?_ ?_
-      · dsimp
-        simp only [biprod.inl_desc_assoc, comp_zero, S, Z, Q]
-        slice_lhs 1 2 => erw [← (FinitelyPresented.embedding C).map_comp]
-                         rw [biprod.inl_desc]
-        erw [← comm₂]
-        change (IsFinitelyPresented C).ι.map _ ≫ cokernel.π ((IsFinitelyPresented C).ι.map u) = 0
-        rw [Functor.map_comp, assoc, cokernel.condition, comp_zero]
-      · dsimp
-        simp only [biprod.inr_desc_assoc, comp_zero, S, Z, Q]
-        slice_lhs 1 2 => erw [← (FinitelyPresented.embedding C).map_comp]
-                         rw [biprod.inr_desc]
-        dsimp [f', p']
-        conv_lhs => congr; erw [Y.2.presentation_zero]
-        rw [zero_comp]
-    have colim : IsColimit (CokernelCofork.ofπ
-      (f := (embedding C).map (biprod.desc v f')) Q eq₀) := sorry
--/
+  have := hS'.2
+  have exact := coker_sequence_exact S.g S' hS'.1 (preadditiveYoneda.map (X.2.presentation_mapB Y.2 u))
+    u (IsFinitelyPresented.presentation_map_comm₂'' X Y u).symm
+  have epi := coker_sequence_epi  S.g S' (preadditiveYoneda.map (X.2.presentation_mapB Y.2 u))
+    u (IsFinitelyPresented.presentation_map_comm₂'' X Y u).symm
+  have := ((ShortComplex.exact_and_epi_g_iff_g_is_cokernel _).mp ⟨exact, epi⟩)
+  refine (IsColimit.equivOfNatIsoOfIso ?_ _ _ ?_).toFun (Classical.choice this)
+  · refine NatIso.ofComponents ?_ ?_
+    · intro x
+      match x with
+      | WalkingParallelPair.zero =>
+        exact ((FinitelyPresented.embedding C ⋙ (IsFinitelyPresented C).ι).mapBiprod _ _).symm
+      | WalkingParallelPair.one => exact Iso.refl _
+    · intro _ _ u
+      match u with
+      | WalkingParallelPairHom.id _ =>
+        dsimp; simp only [CategoryTheory.Functor.map_id, id_comp]; rfl
+      | WalkingParallelPairHom.left =>
+        dsimp
+        simp only [comp_id]
+        conv_rhs => congr; erw [← (FinitelyPresented.embedding C ⋙
+                      (IsFinitelyPresented C).ι).mapBiprod_inv]
+        erw [biprod.mapBiprod_inv_map_desc]
+        dsimp
+        rfl
+      | WalkingParallelPairHom.right =>
+        dsimp
+        simp only [comp_id, comp_zero]
+  · refine Cocones.ext ?_ ?_
+    · exact (PreservesCokernel.iso (IsFinitelyPresented C).ι u).symm ≪≫
+        (IsFinitelyPresented C).ι.mapIso ((cokernelIsCokernel u).coconePointUniqueUpToIso hc)
+    · intro x
+      match x with
+      | WalkingParallelPair.zero =>
+        dsimp [S, S']
+        simp only [biprod.lift_desc_assoc, Preadditive.add_comp, assoc, PreservesCokernel.iso_inv]
+        slice_lhs 3 4 => rw [IsFinitelyPresented.presentation_map_f_p]
+        simp only [zero_comp, comp_zero, add_zero]
+        slice_lhs 4 5 => change cokernel.π ((IsFinitelyPresented C).ι.map u) ≫ _
+                         rw [π_comp_cokernelComparison]
+        slice_lhs 4 5 => change _ ≫ (IsFinitelyPresented C).ι.map _
+                         rw [← Functor.map_comp]
+                         erw [IsColimit.comp_coconePointUniqueUpToIso_hom _ hc]
+        slice_rhs 3 4 => erw [IsColimit.comp_coconePointUniqueUpToIso_inv hc]
+        rw [biprod.desc_eq]
+        simp only [Cofork.app_one_eq_π, ι_map, Functor.map_add, Functor.map_comp,
+          Preadditive.add_comp, assoc]
+        conv_rhs => congr; rfl; congr; rfl; rw [IsFinitelyPresented.presentation_map_f_p₂_assoc]
+        simp only [zero_comp, comp_zero, add_zero]
+        rfl
+      | WalkingParallelPair.one =>
+        dsimp [S, S']
+        simp only [PreservesCokernel.iso_inv, assoc]
+        slice_rhs 2 3 => erw [IsColimit.comp_coconePointUniqueUpToIso_inv hc]
+        erw [id_comp]
+        slice_lhs 2 3 => change cokernel.π ((IsFinitelyPresented C).ι.map u) ≫ _
+                         rw [π_comp_cokernelComparison]
+        slice_lhs 2 3 => change _ ≫ (IsFinitelyPresented C).ι.map _
+                         rw [← Functor.map_comp]
+                         erw [IsColimit.comp_coconePointUniqueUpToIso_hom _ hc]
+        simp only [Cofork.app_one_eq_π, ι_map]
+        rfl
 
 variable {D : Type u'} [Category.{v'} D] [Preadditive D] [HasCokernels D]
   (F : C ⥤ D) [F.Additive]
@@ -368,6 +276,50 @@ lemma IsFinitelyPresented.cokernel_map {A B A' B' : C} (f : B ⟶ A) (f' : B' �
   dsimp
   simp
 
+lemma FinitelyPresented.lift_id (X : FinitelyPresented C) :
+    cokernel.map (preadditiveYoneda.map X.2.presentation_map_f) (preadditiveYoneda.map
+    X.2.presentation_map_f) (preadditiveYoneda.map (X.2.presentation_mapA X.2 (𝟙 X)))
+    (preadditiveYoneda.map (X.2.presentation_mapB X.2 (𝟙 X)))
+    (by rw [← Functor.map_comp, X.2.presentation_map_comm₁ X.2 (𝟙 X), Functor.map_comp]) =
+    cokernel.map (preadditiveYoneda.map X.2.presentation_map_f) (preadditiveYoneda.map
+    X.2.presentation_map_f) (preadditiveYoneda.map (𝟙 X.2.presentation_A))
+    (preadditiveYoneda.map (𝟙 X.2.presentation_B)) (by simp) := by
+  rw [← cancel_epi (cokernel.π _)]
+  dsimp
+  simp only [cokernel.π_desc, coequalizer_as_cokernel, CategoryTheory.Functor.map_id,
+            preadditiveYoneda_obj, id_comp]
+  rw [← cancel_mono ((cokernelIsCokernel (preadditiveYoneda.map
+            X.2.presentation_map_f)).coconePointUniqueUpToIso X.2.presentation_cokernel).hom]
+  slice_lhs 2 3 => erw [IsColimit.comp_coconePointUniqueUpToIso_hom _
+            X.2.presentation_cokernel]
+  erw [IsColimit.comp_coconePointUniqueUpToIso_hom _ X.2.presentation_cokernel]
+  dsimp
+  rw [X.2.presentation_map_comm₂ X.2 (𝟙 X)]
+  erw [comp_id]
+
+lemma FinitelyPresented.lift_comp {X X' X'' : FinitelyPresented C} (u : X ⟶ X') (v : X' ⟶ X'') :
+    cokernel.map (preadditiveYoneda.map X.2.presentation_map_f) (preadditiveYoneda.map
+    X''.2.presentation_map_f) (preadditiveYoneda.map (X.2.presentation_mapA X''.2 (u ≫ v)))
+    (preadditiveYoneda.map (X.2.presentation_mapB X''.2 (u ≫ v)))
+    (by rw [← Functor.map_comp, X.2.presentation_map_comm₁ X''.2, Functor.map_comp]) =
+    cokernel.map (preadditiveYoneda.map X.2.presentation_map_f) (preadditiveYoneda.map
+    X''.2.presentation_map_f) (preadditiveYoneda.map (X.2.presentation_mapA X'.2 u ≫
+    X'.2.presentation_mapA X''.2 v)) (preadditiveYoneda.map (X.2.presentation_mapB X'.2 u ≫
+    X'.2.presentation_mapB X''.2 v))
+    (by rw [← Functor.map_comp, ← assoc, X.2.presentation_map_comm₁ X'.2, assoc,
+            X'.2.presentation_map_comm₁ X''.2, ← assoc, Functor.map_comp]) := by
+  rw [← cancel_epi (cokernel.π _)]
+  simp only [preadditiveYoneda_obj, cokernel.π_desc, coequalizer_as_cokernel, Functor.map_comp,
+    assoc]
+  rw [← cancel_mono ((cokernelIsCokernel (preadditiveYoneda.map
+            X''.2.presentation_map_f)).coconePointUniqueUpToIso X''.2.presentation_cokernel).hom]
+  slice_lhs 2 3 => erw [IsColimit.comp_coconePointUniqueUpToIso_hom _ X''.2.presentation_cokernel]
+  slice_rhs 3 4 => erw [IsColimit.comp_coconePointUniqueUpToIso_hom _ X''.2.presentation_cokernel]
+  dsimp
+  rw [X.2.presentation_map_comm₂ X''.2 (u ≫ v)]
+  conv_rhs => rw [X'.2.presentation_map_comm₂ X''.2 v, ← assoc,
+                  X.2.presentation_map_comm₂ X'.2 u, assoc]
+
 def FinitelyPresented.lift :
     (FinitelyPresented C) ⥤ D where
   obj X := cokernel (F.map X.2.presentation_map_f)
@@ -376,15 +328,9 @@ def FinitelyPresented.lift :
       (F.map (X.2.presentation_mapB X'.2 u)) ?_
     rw [← F.map_comp, X.2.presentation_map_comm₁, F.map_comp]
   map_id X := by
-    have := IsFinitelyPresented.cokernel_map X.2.presentation_map_f X.2.presentation_map_f (X.2.presentation_mapB X.2 (𝟙 X))
+    rw [IsFinitelyPresented.cokernel_map X.2.presentation_map_f X.2.presentation_map_f (X.2.presentation_mapB X.2 (𝟙 X))
       (𝟙 _)  (X.2.presentation_mapA X.2 (𝟙 X)) (𝟙 _) (D := D) (X.2.presentation_map_comm₁ X.2 (𝟙 X)) (by simp)
-      (by rw [← cancel_epi (cokernel.π _)]
-          simp only [preadditiveYoneda_obj, cokernel.π_desc, coequalizer_as_cokernel,
-            CategoryTheory.Functor.map_id, id_comp]
-          rw [← cancel_mono X.2.presentation_iso.inv, assoc, X.2.presentation_map_comm₂ X.2 (𝟙 X)]
-          erw [comp_id]) F
-    rw [this]
-    rw [← cancel_epi (cokernel.π _)]
+      (FinitelyPresented.lift_id X) F, ← cancel_epi (cokernel.π _)]
     dsimp
     simp
   map_comp {X X' X''} u v := by
@@ -395,12 +341,7 @@ def FinitelyPresented.lift :
       (X.2.presentation_map_comm₁ X''.2 (u ≫ v))
       (by rw [← assoc, X.2.presentation_map_comm₁ X'.2 u, assoc,
               X'.2.presentation_map_comm₁ X''.2 v, assoc])
-      (by rw [← cancel_epi (cokernel.π _)]
-          simp only [preadditiveYoneda_obj, cokernel.π_desc, coequalizer_as_cokernel,
-            Functor.map_comp, assoc]
-          rw [← cancel_mono X''.2.presentation_iso.inv, assoc, X.2.presentation_map_comm₂ X''.2
-              (u ≫ v), assoc, assoc, X'.2.presentation_map_comm₂ X''.2 v,
-              X.2.presentation_map_comm₂_assoc X'.2 u]) F
+      (FinitelyPresented.lift_comp u v) F
     erw [this]
     rw [← cancel_epi (cokernel.π _)]
     dsimp
@@ -414,74 +355,96 @@ instance : (FinitelyPresented.lift F).Additive where
     simp only [cokernel.π_desc, Preadditive.comp_add]
     sorry
 
-def presentation_map_p {A B X : C} (f : A ⟶ B)
-    (iso : preadditiveYoneda.obj X ≅ cokernel (preadditiveYoneda.map f)) : B ⟶ X :=
-  (preadditiveYoneda.map_surjective (cokernel.π _ ≫ iso.inv)).choose
+def presentation_map_s {B X : C} (p : B ⟶ X)
+    [Epi (preadditiveYoneda.map p)] : X ⟶ B :=
+  preadditiveYoneda.preimage (IsRepresentable_proj (preadditiveYoneda.obj X)
+  (preadditiveYoneda.obj B) (preadditiveYoneda.obj X) (𝟙 _) (preadditiveYoneda.map p)).choose
 
-omit [HasFiniteProducts C] in
-lemma presentation_map_f_p {A B X : C} (f : A ⟶ B)
-    (iso : preadditiveYoneda.obj X ≅ cokernel (preadditiveYoneda.map f)) :
-    f ≫ presentation_map_p f iso = 0 := by
+lemma presentation_map_s_p {B X : C} (p : B ⟶ X) [Epi (preadditiveYoneda.map p)] :
+    presentation_map_s p ≫ p = 𝟙 _ := by
   apply preadditiveYoneda.map_injective
-  rw [Functor.map_comp, presentation_map_p,
-    (preadditiveYoneda.map_surjective (cokernel.π _ ≫ iso.inv)).choose_spec]
+  dsimp [presentation_map_s]
+  rw [preadditiveYoneda.map_comp, Functor.map_preimage, ← (IsRepresentable_proj
+    (preadditiveYoneda.obj X) (preadditiveYoneda.obj B) (preadditiveYoneda.obj X) (𝟙 _)
+    (preadditiveYoneda.map p)).choose_spec]
   simp
 
-def presentation_map_s {A B X : C} (f : A ⟶ B)
-    (iso : preadditiveYoneda.obj X ≅ cokernel (preadditiveYoneda.map f)) :
-    X ⟶ B := by
-  have ht := IsRepresentable_proj (preadditiveYoneda.obj X) (preadditiveYoneda.obj B)
-    (preadditiveYoneda.obj X) (𝟙 _) (cokernel.π _ ≫ iso.inv)
-  exact (preadditiveYoneda.map_surjective ht.choose).choose
-
-lemma presentation_map_s_p {A B X : C} (f : A ⟶ B)
-    (iso : preadditiveYoneda.obj X ≅ cokernel (preadditiveYoneda.map f)) :
-    presentation_map_s f iso ≫ presentation_map_p f iso = 𝟙 _ := by
-  apply preadditiveYoneda.map_injective
-  have ht := IsRepresentable_proj (preadditiveYoneda.obj X) (preadditiveYoneda.obj B)
-    (preadditiveYoneda.obj X) (𝟙 _) (cokernel.π _ ≫ iso.inv)
-  rw [preadditiveYoneda.map_comp, presentation_map_s,
-    (preadditiveYoneda.map_surjective ht.choose).choose_spec, preadditiveYoneda.map_id,
-    presentation_map_p, (preadditiveYoneda.map_surjective
-    (cokernel.π _ ≫ iso.inv)).choose_spec, ← ht.choose_spec]
-
-lemma presentation_map_g_exists {A B X : C} (f : A ⟶ B)
-    (iso : preadditiveYoneda.obj X ≅ cokernel (preadditiveYoneda.map f)) :
-    ∃ (g : B ⟶ A), g ≫ f = presentation_map_p f iso ≫ presentation_map_s f iso - 𝟙 _ := by
-  set v : B ⟶ B := presentation_map_p f iso ≫ presentation_map_s f iso - 𝟙 _
-  have zero : v ≫ presentation_map_p f iso = 0 := by
+lemma presentation_map_g_exists {A B X : C} (f : A ⟶ B) (p : B ⟶ X) (zero : f ≫ p = 0)
+    (hc : IsColimit (CokernelCofork.ofπ (f := preadditiveYoneda.map f) (preadditiveYoneda.map p)
+    (by rw [← Functor.map_comp, zero, Functor.map_zero]))) :
+    have : Epi (preadditiveYoneda.map p) := epi_of_isColimit_cofork hc
+    ∃ (g : B ⟶ A), g ≫ f = p ≫ presentation_map_s p - 𝟙 _ := by
+  have : Epi (preadditiveYoneda.map p) := epi_of_isColimit_cofork hc
+  set v : B ⟶ B := p ≫ presentation_map_s p - 𝟙 _
+  have zero' : v ≫ p = 0 := by
     dsimp [v]
-    simp only [Preadditive.sub_comp, assoc, v]
-    rw [presentation_map_s_p, comp_id]
-    erw [id_comp, sub_self]
-  set S := ShortComplex.mk (preadditiveYoneda.map f) (cokernel.π _) (cokernel.condition _)
+    simp only [Preadditive.sub_comp, assoc]
+    rw [presentation_map_s_p, comp_id, id_comp, sub_self]
+  set S := ShortComplex.mk (preadditiveYoneda.map f) (preadditiveYoneda.map p)
+    (by rw [← Functor.map_comp, zero, Functor.map_zero])
   have zero' : preadditiveYoneda.map v ≫ S.g = 0 := by
     dsimp [S]
-    rw [← cancel_mono iso.inv, assoc, ← (preadditiveYoneda.map_surjective
-      (cokernel.π _ ≫ iso.inv)).choose_spec, ← preadditiveYoneda.map_comp]
-    erw [zero]
-    simp
-  have hS := S.exact_of_g_is_cokernel (cokernelIsCokernel _)
+    rw [← Functor.map_comp, zero', Functor.map_zero]
+  have hS := S.exact_of_g_is_cokernel hc
   rw [S.exact_iff_epi_kernel_lift] at hS
   have left := IsRepresentable_proj (preadditiveYoneda.obj B) (preadditiveYoneda.obj A) _
     (kernel.lift _ (preadditiveYoneda.map v) zero') (kernel.lift S.g S.f S.zero)
-  use (preadditiveYoneda.map_surjective left.choose).choose
+  use preadditiveYoneda.preimage left.choose
   apply preadditiveYoneda.map_injective
-  rw [preadditiveYoneda.map_comp, (preadditiveYoneda.map_surjective left.choose).choose_spec]
+  rw [preadditiveYoneda.map_comp, preadditiveYoneda.map_preimage]
   have := left.choose_spec
   apply_fun (fun x ↦ x ≫ kernel.ι _) at this
   simp only [Functor.comp_obj, Functor.flip_obj_obj, kernel.lift_ι, assoc, S] at this
   exact this.symm
 
-def cokernel_presentation {A B X : C} (f : A ⟶ B)
-    (iso : preadditiveYoneda.obj X ≅ cokernel (preadditiveYoneda.map f)) (F : C ⥤ D) [F.Additive] :
-    IsColimit (CokernelCofork.ofπ (f := F.map f) (F.map (presentation_map_p f iso))
-    (by rw [← F.map_comp, presentation_map_f_p f iso, F.map_zero])) := by
-  refine IsCokernelOfSplit (f := F.map f) (p := F.map (presentation_map_p f iso)) _ ?_ ?_
-  · exact SplitEpi.map {section_ := presentation_map_s f iso, id := presentation_map_s_p f iso} F
-  · use F.map (presentation_map_g_exists f iso).choose
-    rw [← F.map_comp, (presentation_map_g_exists f iso).choose_spec]
+def cokernel_persistance {A B X : C} (f : A ⟶ B) (p : B ⟶ X) (zero : f ≫ p = 0)
+    (hc : IsColimit (CokernelCofork.ofπ (f := preadditiveYoneda.map f) (preadditiveYoneda.map p)
+    (by rw [← Functor.map_comp, zero, Functor.map_zero]))) (F : C ⥤ D) [F.Additive] :
+    IsColimit (CokernelCofork.ofπ (f := F.map f) (F.map p)
+    (by rw [← F.map_comp, zero, F.map_zero])) := by
+  have : Epi (preadditiveYoneda.map p) := epi_of_isColimit_cofork hc
+  refine IsCokernelOfSplit (f := F.map f) (p := F.map p) _ ?_ ?_
+  · exact SplitEpi.map {section_ := presentation_map_s p, id := presentation_map_s_p p} F
+  · use F.map (presentation_map_g_exists f p zero hc).choose
+    rw [← F.map_comp, (presentation_map_g_exists f p zero hc).choose_spec]
     simp
+
+def presentation_map_p (X : C) :
+    (IsFinitelyPresented_of_isRepresentable (preadditiveYoneda.obj X)).presentation_B ⟶ X :=
+  preadditiveYoneda.preimage ((IsFinitelyPresented_of_isRepresentable
+  (preadditiveYoneda.obj X)).presentation_map_p)
+
+def presentation_map_f_p (X : C) :
+    (IsFinitelyPresented_of_isRepresentable (preadditiveYoneda.obj X)).presentation_map_f
+    ≫ presentation_map_p X = 0 := by
+  apply preadditiveYoneda.map_injective
+  dsimp [presentation_map_p]
+  rw [preadditiveYoneda.map_comp, preadditiveYoneda.map_preimage,
+    IsFinitelyPresented.presentation_map_f_p, Functor.map_zero]
+
+def presentation_colimit (X : C) : IsColimit (CokernelCofork.ofπ (f := preadditiveYoneda.map
+    ((IsFinitelyPresented_of_isRepresentable (preadditiveYoneda.obj X)).presentation_map_f))
+    (preadditiveYoneda.map (presentation_map_p X))
+    (by rw [← Functor.map_comp, presentation_map_f_p X, Functor.map_zero])) := by
+  refine IsColimit.ofIsoColimit (IsFinitelyPresented_of_isRepresentable
+    (preadditiveYoneda.obj X)).presentation_cokernel  ?_
+  refine Cocones.ext (Iso.refl _) ?_
+  intro x
+  match x with
+  | WalkingParallelPair.zero =>
+    dsimp [presentation_map_p]
+    simp
+  | WalkingParallelPair.one =>
+    dsimp [presentation_map_p]
+    simp
+
+def cokernel_presentation (X : C) (F : C ⥤ D) [F.Additive] :
+    IsColimit (CokernelCofork.ofπ (f := F.map (IsFinitelyPresented_of_isRepresentable
+    (preadditiveYoneda.obj X)).presentation_map_f) (F.map (presentation_map_p X))
+    (by rw [← F.map_comp, presentation_map_f_p X, F.map_zero])) :=
+  cokernel_persistance (IsFinitelyPresented_of_isRepresentable
+    (preadditiveYoneda.obj X)).presentation_map_f (presentation_map_p X)
+    (presentation_map_f_p X) (presentation_colimit X) F
 
 def FinitelyPresented.embeddingLiftIso :
     FinitelyPresented.embedding C ⋙ FinitelyPresented.lift F ≅ F := by
@@ -489,36 +452,33 @@ def FinitelyPresented.embeddingLiftIso :
   · intro X
     have hX := IsFinitelyPresented_of_isRepresentable (preadditiveYoneda.obj X)
     exact (cokernelIsCokernel (F.map hX.presentation_map_f)).coconePointUniqueUpToIso
-      (cokernel_presentation hX.presentation_map_f hX.presentation_iso F)
+      (cokernel_presentation X F)
   · intro X Y f
     have hX := IsFinitelyPresented_of_isRepresentable (preadditiveYoneda.obj X)
     rw [← cancel_epi (cokernel.π (F.map hX.presentation_map_f))]
     dsimp [lift]
     simp only [cokernel.π_desc_assoc, assoc]
     have := (cokernelIsCokernel (F.map hX.presentation_map_f)).comp_coconePointUniqueUpToIso_hom
-      (cokernel_presentation hX.presentation_map_f hX.presentation_iso F)
+      (cokernel_presentation X F)
       (j := WalkingParallelPair.one)
     dsimp at this
     conv_rhs => congr; congr; congr; change ((cokernelIsCokernel
-      (F.map hX.presentation_map_f)).coconePointUniqueUpToIso (cokernel_presentation
-      hX.presentation_map_f hX.presentation_iso F)).hom
+      (F.map hX.presentation_map_f)).coconePointUniqueUpToIso (cokernel_presentation X F)).hom
     slice_rhs 1 2 => rw [this]
     have hY := IsFinitelyPresented_of_isRepresentable (preadditiveYoneda.obj Y)
     have := (cokernelIsCokernel (F.map hY.presentation_map_f)).comp_coconePointUniqueUpToIso_hom
-      (cokernel_presentation hY.presentation_map_f hY.presentation_iso F)
+      (cokernel_presentation Y F)
       (j := WalkingParallelPair.one)
     dsimp at this
     conv_lhs => congr; rfl; congr; change cokernel.π (F.map hY.presentation_map_f); rfl
                 change ((cokernelIsCokernel (F.map hY.presentation_map_f)).coconePointUniqueUpToIso
-      (cokernel_presentation hY.presentation_map_f hY.presentation_iso F)).hom
+      (cokernel_presentation Y F)).hom
     rw [this]
     rw [← F.map_comp, ← F.map_comp]
     apply congrArg F.map
     apply preadditiveYoneda.map_injective
-    erw [preadditiveYoneda.map_comp, (preadditiveYoneda.map_surjective (cokernel.π _ ≫
-      hY.presentation_iso.inv)).choose_spec]
-    erw [preadditiveYoneda.map_comp, (preadditiveYoneda.map_surjective (cokernel.π _ ≫
-      hX.presentation_iso.inv)).choose_spec]
+    dsimp [presentation_map_p]
+    simp only [Functor.map_comp, Functor.map_preimage]
     exact hX.presentation_map_comm₂ hY (preadditiveYoneda.map f)
 
 def FinitelyPresented.lift_preservesCokernels_aux₁ (X : FinitelyPresented C) :
@@ -555,7 +515,7 @@ def FinitelyPresented.lift_preservesCokernels {X Y : FinitelyPresented C} (u : X
     set w : A ⟶ A' := X.2.presentation_mapA Y.2 u
     have comm₁ : f ≫ v = w ≫ f' := X.2.presentation_map_comm₁ Y.2 u
     have comm₂ : p ≫ u = (FinitelyPresented.embedding C).map v ≫ p' :=
-      (IsFinitelyPresented.presentation_map_comm₂' X Y u).symm
+      (IsFinitelyPresented.presentation_map_comm₂'' X Y u).symm
     set e' := hc.coconePointUniqueUpToIso (cokernelIsCokernel u)
     set Q : ((FinitelyPresented.embedding C).obj B').1 ⟶ Z.1 := p' ≫ cokernel.π u ≫ e'.inv
     set G : ((FinitelyPresented.embedding C).obj (B ⊞ A')).1 ⟶
@@ -569,8 +529,8 @@ def FinitelyPresented.lift_preservesCokernels {X Y : FinitelyPresented C} (u : X
                   rw [Iso.inv_hom_id, comp_id]
       rw [presentation_cokernel_zero]
       simp
-    have colim : IsColimit (CokernelCofork.ofπ
-      (f := (embedding C).map (biprod.desc v f')) Q eq₀) := sorry
+    have colim : IsColimit (CokernelCofork.ofπ (f := (embedding C).map (biprod.desc v f'))
+      Q eq₀) := presentation_cokernel u hc
     set Q' := (FinitelyPresented.lift F).map Q
     have eq₀' : (lift F).map ((embedding C).map (biprod.desc v f')) ≫ Q' = 0 := by
       dsimp [Q']
@@ -612,7 +572,7 @@ def FinitelyPresented.lift_preservesCokernels {X Y : FinitelyPresented C} (u : X
         slice_lhs 1 2 => rw [← Functor.map_comp, biprod.inr_desc]
         slice_rhs 1 2 => rw [← Functor.map_comp, biprod.inr_fst]
         simp only [assoc, Functor.map_zero, zero_comp]
-        rw [cokernel.condition_assoc, zero_comp]
+        exact IsFinitelyPresented.presentation_map_f_p₂ _
     have eqQ : (lift F).map p' ≫ (lift F).map (Cofork.π c) = Q' := by
       have eq : p' ≫ Cofork.π c = Q := by
         dsimp [Q, e']

@@ -257,6 +257,9 @@ def IsFinitelyPresented.presentation_cokernel {X : Cᵒᵖ ⥤ AddCommGrp.{v}}
       rw [comp_id]
       rfl
 
+instance {X : Cᵒᵖ ⥤ AddCommGrp.{v}} (hX : IsFinitelyPresented C X) :
+    Epi hX.presentation_map_p := epi_of_isColimit_cofork hX.presentation_cokernel
+
 def IsFinitelyPresented.presentation_iso {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
     X ≅ cokernel (preadditiveYoneda.map (hX.presentation_map_f)) :=
   hX.presentation_cokernel.coconePointUniqueUpToIso (colimit.isColimit (parallelPair
