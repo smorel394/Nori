@@ -51,32 +51,6 @@ lemma isFinitelyPresented_iff_shortComplex_representable (X : Cᵒᵖ ⥤ AddCom
     rw [ShortComplex.exact_iff_epi_kernel_lift] at h
     exact h
 
-section Presentation
-
-def IsFinitelyPresented.presentation_A {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
-    C := by
-  have h := (isFinitelyPresented_iff_shortComplex_representable X).mp hX
-  have := h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.1
-  exact (h.choose ⋙ forget AddCommGrp).reprX
-
-def IsFinitelyPresented.presentation_B {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
-    C := by
-  have h := (isFinitelyPresented_iff_shortComplex_representable X).mp hX
-  have := h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.2.1
-  exact (h.choose_spec.choose ⋙ forget AddCommGrp).reprX
-
-def IsFinitelyPresented.presentation_map_f {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
-    hX.presentation_A ⟶ hX.presentation_B := by
-  have h := (isFinitelyPresented_iff_shortComplex_representable X).mp hX
-  have := h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.1
-  have := h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.2.1
-  set f := h.choose_spec.choose_spec.choose
-  set eA := (h.choose ⋙ forget AddCommGrp).representableBy.toIso
-  set eB := (h.choose_spec.choose ⋙ forget AddCommGrp).representableBy.toIso
-  exact (yoneda.map_surjective (eA.hom ≫ whiskerRight f (forget AddCommGrp) ≫ eB.inv)).choose
-
-end Presentation
-
 instance : (IsFinitelyPresented C).IsClosedUnderIsomorphisms where
   of_iso α h := by
     obtain ⟨A, B, u, _, v, _, _, _⟩ := h
@@ -200,36 +174,95 @@ lemma Functor.representableByEquivAdd_forget {F : Cᵒᵖ ⥤ AddCommGrp.{v}} {Y
     isoWhiskerRight (Functor.representableByEquivAdd.toFun r) (forget AddCommGrp) =
     Functor.representableByEquiv.toFun r := by aesop
 
-def IsFinitelyPresented.presentation_iso {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
-    X ≅ cokernel (preadditiveYoneda.map (hX.presentation_map_f)) := by
+section Presentation
+
+def IsFinitelyPresented.presentation_A {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
+    C := by
+  have h := (isFinitelyPresented_iff_shortComplex_representable X).mp hX
+  have := h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.1
+  exact (h.choose ⋙ forget AddCommGrp).reprX
+
+def IsFinitelyPresented.presentation_B {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
+    C := by
+  have h := (isFinitelyPresented_iff_shortComplex_representable X).mp hX
+  have := h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.2.1
+  exact (h.choose_spec.choose ⋙ forget AddCommGrp).reprX
+
+def IsFinitelyPresented.presentation_map_f {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
+    hX.presentation_A ⟶ hX.presentation_B := by
   have h := (isFinitelyPresented_iff_shortComplex_representable X).mp hX
   have := h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.1
   have := h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.2.1
   set f := h.choose_spec.choose_spec.choose
-  set eA := (h.choose ⋙ forget AddCommGrp).representableBy.toIso
-  set eB := (h.choose_spec.choose ⋙ forget AddCommGrp).representableBy.toIso
-  set g := h.choose_spec.choose_spec.choose_spec.choose
-  have : Epi g := h.choose_spec.choose_spec.choose_spec.choose_spec.choose
   set fA := Functor.representableByEquivAdd (h.choose ⋙ forget AddCommGrp).representableBy
   set fB := Functor.representableByEquivAdd (h.choose_spec.choose ⋙
     forget AddCommGrp).representableBy
-  set k := eA.hom ≫ whiskerRight f (forget AddCommGrp) ≫ eB.inv
-  set eq : preadditiveYoneda.map hX.presentation_map_f = fA.hom ≫ f ≫ fB.inv := by
-    ext1; ext1 D
-    apply (forget AddCommGrp).map_injective
-    change (yoneda.map _).app D = _
-    rw [presentation_map_f, (yoneda.map_surjective (eA.hom ≫ whiskerRight f
-      (forget AddCommGrp) ≫ eB.inv)).choose_spec ]
-    have eqA : eA = isoWhiskerRight fA (forget AddCommGrp) :=
-      Functor.representableByEquivAdd_forget _
-    have eqB : eB = isoWhiskerRight fB (forget AddCommGrp) :=
-      Functor.representableByEquivAdd_forget _
-    rw [eqA, eqB]
-    dsimp
-    rfl
+  exact preadditiveYoneda.preimage (fA.hom ≫ f ≫ fB.inv)
+
+def IsFinitelyPresented.presentation_map_p {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
+    preadditiveYoneda.obj hX.presentation_B ⟶ X := by
+  have h := (isFinitelyPresented_iff_shortComplex_representable X).mp hX
+  have := h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.2.1
+  exact (Functor.representableByEquivAdd (h.choose_spec.choose ⋙
+    forget AddCommGrp).representableBy).hom ≫ h.choose_spec.choose_spec.choose_spec.choose
+
+lemma IsFinitelyPresented.presentation_map_f_p {X : Cᵒᵖ ⥤ AddCommGrp}
+    (hX : IsFinitelyPresented C X) :
+    preadditiveYoneda.map hX.presentation_map_f ≫ hX.presentation_map_p = 0 := by
+  have h := (isFinitelyPresented_iff_shortComplex_representable X).mp hX
+  dsimp [IsFinitelyPresented.presentation_map_f, IsFinitelyPresented.presentation_map_p]
+  rw [Functor.map_preimage]
+  simp only [assoc, Iso.inv_hom_id_assoc, Preadditive.IsIso.comp_left_eq_zero]
+  exact h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose
+
+def IsFinitelyPresented.presentation_cokernel {X : Cᵒᵖ ⥤ AddCommGrp.{v}}
+    (hX : IsFinitelyPresented C X) :
+    IsColimit (CokernelCofork.ofπ hX.presentation_map_p hX.presentation_map_f_p) := by
+  have h := (isFinitelyPresented_iff_shortComplex_representable X).mp hX
+  have := h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.1
+  have := h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.2.1
+  have : Epi h.choose_spec.choose_spec.choose_spec.choose :=
+    h.choose_spec.choose_spec.choose_spec.choose_spec.choose
+  set fA := Functor.representableByEquivAdd (h.choose ⋙ forget AddCommGrp).representableBy
+  set fB := Functor.representableByEquivAdd (h.choose_spec.choose ⋙
+    forget AddCommGrp).representableBy
   have := h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.2.2.gIsCokernel
-  exact this.coconePointUniqueUpToIso (colimit.isColimit (parallelPair f 0)) ≪≫ (cokernel.mapIso
-    f (preadditiveYoneda.map hX.presentation_map_f) fA.symm fB.symm (by rw [eq]; simp))
+  refine (IsColimit.equivOfNatIsoOfIso ?_ _ _ ?_).toFun this
+  · refine NatIso.ofComponents ?_ ?_
+    · intro x
+      match x with
+      | WalkingParallelPair.zero => exact fA.symm
+      | WalkingParallelPair.one => exact fB.symm
+    · intro _ _ u
+      match u with
+      | WalkingParallelPairHom.id _ => simp
+      | WalkingParallelPairHom.left =>
+        dsimp [IsFinitelyPresented.presentation_map_f]
+        rw [preadditiveYoneda.map_preimage]
+        change _ = fA.inv ≫ fA.hom ≫ _
+        rw [Iso.inv_hom_id_assoc]
+        rfl
+      | WalkingParallelPairHom.right =>
+        dsimp
+        simp
+  · refine Cocones.ext (Iso.refl _) ?_
+    intro x
+    match x with
+    | WalkingParallelPair.zero =>
+      dsimp
+      rw [hX.presentation_map_f_p, comp_id,
+        h.choose_spec.choose_spec.choose_spec.choose_spec.choose_spec.choose, comp_zero]
+    | WalkingParallelPair.one =>
+      dsimp
+      rw [comp_id]
+      rfl
+
+def IsFinitelyPresented.presentation_iso {X : Cᵒᵖ ⥤ AddCommGrp} (hX : IsFinitelyPresented C X) :
+    X ≅ cokernel (preadditiveYoneda.map (hX.presentation_map_f)) :=
+  hX.presentation_cokernel.coconePointUniqueUpToIso (colimit.isColimit (parallelPair
+    (preadditiveYoneda.map (hX.presentation_map_f)) 0))
+
+end Presentation
 
 lemma IsRepresentable_proj (A B X : Cᵒᵖ ⥤ AddCommGrp.{v}) [(A ⋙ forget AddCommGrp).IsRepresentable]
     [(B ⋙ forget AddCommGrp).IsRepresentable] (f : A ⟶ X) (g : B ⟶ X) [Epi g] :

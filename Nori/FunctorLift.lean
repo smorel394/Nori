@@ -173,6 +173,106 @@ lemma IsFinitelyPresented.presentation_map_comm₂' (X X' : FinitelyPresented C)
   slice_rhs 1 2 => erw [PreservesCokernel.π_iso_hom_assoc (IsFinitelyPresented C).ι]
   rfl
 
+lemma presentation_cokernel_zero {X Y : FinitelyPresented C} (u : X ⟶ Y) :
+    (FinitelyPresented.embedding C).map (biprod.desc (X.2.presentation_mapB Y.2 u) Y.2.presentation_map_f) ≫
+    Y.2.presentation_map_p₂ ≫ cokernel.π u  = 0 := by
+  rw [← cancel_epi ((FinitelyPresented.embedding C).mapBiprod _ _).inv]
+  refine biprod.hom_ext' _ _ ?_ ?_
+  · dsimp
+    simp only [assoc, biprod.inl_desc_assoc, comp_zero]
+    slice_lhs 1 2 => rw [← Functor.map_comp, biprod.inl_desc]
+    conv_lhs => congr; rw [assoc, IsFinitelyPresented.presentation_map_comm₂']
+    simp
+  · dsimp
+    simp only [assoc, biprod.inr_desc_assoc, comp_zero]
+    slice_lhs 1 2 => rw [← Functor.map_comp, biprod.inr_desc]
+    simp
+
+def presentation_cokernel {X Y : FinitelyPresented C} (u : X ⟶ Y) {c : CokernelCofork u}
+    (hc : IsColimit c) : IsColimit (CokernelCofork.ofπ (Z := c.pt)
+    (f := (FinitelyPresented.embedding C).map (biprod.desc (X.2.presentation_mapB Y.2 u)
+    (Y.2.presentation_map_f))) (Y.2.presentation_map_p₂ ≫ cokernel.π u ≫
+    (hc.coconePointUniqueUpToIso (cokernelIsCokernel u)).inv)
+    (by rw [← cancel_mono ((hc.coconePointUniqueUpToIso (cokernelIsCokernel u)).hom)]
+        simp only [Cofork.ofπ_pt, assoc, Iso.inv_hom_id, comp_id, zero_comp]
+        exact presentation_cokernel_zero u)) := by
+  refine isColimitOfReflects (IsFinitelyPresented C).ι ?_
+  refine (IsColimit.equivOfNatIsoOfIso (F := parallelPair (biprod.desc (preadditiveYoneda.map
+    (X.2.presentation_mapB Y.2 u)) (preadditiveYoneda.map Y.2.presentation_map_f)) 0) (G :=
+    (parallelPair ((FinitelyPresented.embedding C).map (biprod.desc (X.2.presentation_mapB Y.2 u)
+    Y.2.presentation_map_f)) 0 ⋙ (IsFinitelyPresented C).ι)) ?_
+    (CokernelCofork.ofπ (f := (biprod.desc (preadditiveYoneda.map
+    (X.2.presentation_mapB Y.2 u)) (preadditiveYoneda.map Y.2.presentation_map_f)))
+    (Y.2.presentation_p ≫ sorry) sorry (Z := (IsFinitelyPresented C).ι.obj c.pt))
+    _ ?_).toFun ?_
+  · sorry
+  · sorry
+  · sorry
+
+
+/-
+    refine Nonempty.intro ?_
+    set Z := c.pt
+    set q : Y ⟶ Z := Cofork.π c
+    set A := X.2.presentation_A
+    set B := X.2.presentation_B
+    set A' := Y.2.presentation_A
+    set B' := Y.2.presentation_B
+    set f : A ⟶ B := X.2.presentation_map_f
+    set f' : A' ⟶ B' := Y.2.presentation_map_f
+    set iso := X.2.presentation_iso
+    set iso' := Y.2.presentation_iso
+    set p : (FinitelyPresented.embedding C).obj B ⟶ X := X.2.presentation_map_p₂
+    set p' : (FinitelyPresented.embedding C).obj B' ⟶ Y := Y.2.presentation_map_p₂
+    set v : B ⟶ B' := X.2.presentation_mapB Y.2 u
+    set w : A ⟶ A' := X.2.presentation_mapA Y.2 u
+    have comm₁ : f ≫ v = w ≫ f' := X.2.presentation_map_comm₁ Y.2 u
+    have comm₂ : p ≫ u = (FinitelyPresented.embedding C).map v ≫ p' :=
+      (IsFinitelyPresented.presentation_map_comm₂' X Y u).symm
+    set S := coker_sequence (C := Cᵒᵖ ⥤ AddCommGrp) p (ShortComplex.mk
+      ((FinitelyPresented.embedding C).map f')
+      p' Y.2.presentation_zero) ((FinitelyPresented.embedding C).map v) u comm₂
+    set e := PreservesCokernel.iso (IsFinitelyPresented C).ι u
+    set e' := hc.coconePointUniqueUpToIso (cokernelIsCokernel u)
+    set Q : ((FinitelyPresented.embedding C).obj B').1 ⟶ Z.1 := S.g ≫ e.inv ≫ e'.inv
+    set G : ((FinitelyPresented.embedding C).obj (B ⊞ A')).1 ⟶
+      ((FinitelyPresented.embedding C).obj B').1 :=
+      ((FinitelyPresented.embedding C).mapBiprod _ _).hom ≫
+      ((IsFinitelyPresented C).ι.mapBiprod _ _).hom ≫ S.f
+    have eq₀ : (embedding C).map (biprod.desc v f') ≫ Q = 0 := by
+      apply (IsFinitelyPresented C).ι.map_injective
+      rw [← cancel_epi ((FinitelyPresented.embedding C ⋙
+        (IsFinitelyPresented C).ι).mapBiprod B A').inv]
+      rw [Functor.map_comp, Functor.map_zero, ← cancel_mono
+        ((IsFinitelyPresented C).ι.mapIso e').hom]
+      rw [← cancel_mono e.hom]
+      dsimp [Q]
+      slice_lhs 6 7 => change ((IsFinitelyPresented C).ι.mapIso e').inv ≫
+                         ((IsFinitelyPresented C).ι.mapIso e').hom
+                       rw [Iso.inv_hom_id]
+      rw [id_comp]
+      slice_lhs 5 6 => rw [Iso.inv_hom_id]
+      dsimp
+      simp only [comp_id, comp_zero, zero_comp, Q]
+      refine biprod.hom_ext' _ _ ?_ ?_
+      · dsimp
+        simp only [biprod.inl_desc_assoc, comp_zero, S, Z, Q]
+        slice_lhs 1 2 => erw [← (FinitelyPresented.embedding C).map_comp]
+                         rw [biprod.inl_desc]
+        erw [← comm₂]
+        change (IsFinitelyPresented C).ι.map _ ≫ cokernel.π ((IsFinitelyPresented C).ι.map u) = 0
+        rw [Functor.map_comp, assoc, cokernel.condition, comp_zero]
+      · dsimp
+        simp only [biprod.inr_desc_assoc, comp_zero, S, Z, Q]
+        slice_lhs 1 2 => erw [← (FinitelyPresented.embedding C).map_comp]
+                         rw [biprod.inr_desc]
+        dsimp [f', p']
+        conv_lhs => congr; erw [Y.2.presentation_zero]
+        rw [zero_comp]
+    have colim : IsColimit (CokernelCofork.ofπ
+      (f := (embedding C).map (biprod.desc v f')) Q eq₀) := sorry
+-/
+
 variable {D : Type u'} [Category.{v'} D] [Preadditive D] [HasCokernels D]
   (F : C ⥤ D) [F.Additive]
 
@@ -397,61 +497,31 @@ def FinitelyPresented.lift_preservesCokernels {X Y : FinitelyPresented C} (u : X
     have comm₁ : f ≫ v = w ≫ f' := X.2.presentation_map_comm₁ Y.2 u
     have comm₂ : p ≫ u = (FinitelyPresented.embedding C).map v ≫ p' :=
       (IsFinitelyPresented.presentation_map_comm₂' X Y u).symm
-    set S := coker_sequence (C := Cᵒᵖ ⥤ AddCommGrp) p (ShortComplex.mk
-      ((FinitelyPresented.embedding C).map f')
-      p' Y.2.presentation_zero) ((FinitelyPresented.embedding C).map v) u comm₂
-    set e := PreservesCokernel.iso (IsFinitelyPresented C).ι u
     set e' := hc.coconePointUniqueUpToIso (cokernelIsCokernel u)
-    set Q : ((FinitelyPresented.embedding C).obj B').1 ⟶ Z.1 := S.g ≫ e.inv ≫ e'.inv
+    set Q : ((FinitelyPresented.embedding C).obj B').1 ⟶ Z.1 := p' ≫ cokernel.π u ≫ e'.inv
     set G : ((FinitelyPresented.embedding C).obj (B ⊞ A')).1 ⟶
       ((FinitelyPresented.embedding C).obj B').1 :=
       ((FinitelyPresented.embedding C).mapBiprod _ _).hom ≫
-      ((IsFinitelyPresented C).ι.mapBiprod _ _).hom ≫ S.f
+      biprod.desc (C := FinitelyPresented C) ((embedding C).map v) ((embedding C).map f')
     have eq₀ : (embedding C).map (biprod.desc v f') ≫ Q = 0 := by
-      apply (IsFinitelyPresented C).ι.map_injective
-      rw [← cancel_epi ((FinitelyPresented.embedding C ⋙
-        (IsFinitelyPresented C).ι).mapBiprod B A').inv]
-      rw [Functor.map_comp, Functor.map_zero, ← cancel_mono
-        ((IsFinitelyPresented C).ι.mapIso e').hom]
-      rw [← cancel_mono e.hom]
       dsimp [Q]
-      slice_lhs 6 7 => change ((IsFinitelyPresented C).ι.mapIso e').inv ≫
-                         ((IsFinitelyPresented C).ι.mapIso e').hom
-                       rw [Iso.inv_hom_id]
-      rw [id_comp]
-      slice_lhs 5 6 => rw [Iso.inv_hom_id]
-      dsimp
-      simp only [comp_id, comp_zero, zero_comp, Q]
-      refine biprod.hom_ext' _ _ ?_ ?_
-      · dsimp
-        simp only [biprod.inl_desc_assoc, comp_zero, S, Z, Q]
-        slice_lhs 1 2 => erw [← (FinitelyPresented.embedding C).map_comp]
-                         rw [biprod.inl_desc]
-        erw [← comm₂]
-        change (IsFinitelyPresented C).ι.map _ ≫ cokernel.π ((IsFinitelyPresented C).ι.map u) = 0
-        rw [Functor.map_comp, assoc, cokernel.condition, comp_zero]
-      · dsimp
-        simp only [biprod.inr_desc_assoc, comp_zero, S, Z, Q]
-        slice_lhs 1 2 => erw [← (FinitelyPresented.embedding C).map_comp]
-                         rw [biprod.inr_desc]
-        dsimp [f', p']
-        conv_lhs => congr; erw [Y.2.presentation_zero]
-        rw [zero_comp]
+      rw [← cancel_mono e'.hom, assoc]
+      conv_lhs => congr; rfl; erw [assoc]; congr; rfl; erw [assoc _ _ e'.hom]
+                  rw [Iso.inv_hom_id, comp_id]
+      rw [presentation_cokernel_zero]
+      simp
+    have colim : IsColimit (CokernelCofork.ofπ
+      (f := (embedding C).map (biprod.desc v f')) Q eq₀) := sorry
     set Q' := (FinitelyPresented.lift F).map Q
     have eq₀' : (lift F).map ((embedding C).map (biprod.desc v f')) ≫ Q' = 0 := by
       dsimp [Q']
       rw [← Functor.map_comp, eq₀, Functor.map_zero]
-    have colim : IsColimit (CokernelCofork.ofπ
-      (f := (embedding C).map (biprod.desc v f')) Q eq₀) := sorry
     set G' := (FinitelyPresented.lift F).map G
     have eqG : G = (FinitelyPresented.embedding C).map (biprod.desc v f') := by
-      dsimp [G, S]
-      rw [biprod.lift_desc, Preadditive.comp_add, ← assoc]
-      conv_lhs => congr; congr; erw [biprod.lift_fst ((embedding C).map biprod.fst)]; rfl; rfl
-                  rw [← assoc]; erw [biprod.lift_snd ((embedding C).map biprod.fst)]
+      dsimp [G]
+      conv_lhs => erw [biprod.lift_desc (f := (embedding C).map biprod.fst)]
       rw [biprod.desc_eq]
       simp only [Functor.map_add, Functor.map_comp]
-      rfl
     have ZERO : CategoryStruct.comp (obj := FinitelyPresented C) G Q = 0 := by rw [eqG, eq₀]
     have colim' : IsColimit (CokernelCofork.ofπ (f := (FinitelyPresented.lift F).map
         ((FinitelyPresented.embedding C).map (biprod.desc v f'))) Q' eq₀') := by
@@ -486,12 +556,8 @@ def FinitelyPresented.lift_preservesCokernels {X Y : FinitelyPresented C} (u : X
         rw [cokernel.condition_assoc, zero_comp]
     have eqQ : (lift F).map p' ≫ (lift F).map (Cofork.π c) = Q' := by
       have eq : p' ≫ Cofork.π c = Q := by
-        dsimp [Q, S, e, e']
-        simp only [PreservesCokernel.iso_inv, assoc]
-        slice_rhs 2 3 => erw [π_comp_cokernelComparison _ ((IsFinitelyPresented C).ι)]
-        slice_rhs 2 3 => change _ ≫ (IsFinitelyPresented C).ι.map _
-                         rw [← Functor.map_comp]
-                         erw [IsColimit.comp_coconePointUniqueUpToIso_inv hc _
+        dsimp [Q, e']
+        slice_rhs 2 3 => erw [IsColimit.comp_coconePointUniqueUpToIso_inv hc _
                            WalkingParallelPair.one]
         rfl
       dsimp [Q']
